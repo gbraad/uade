@@ -1,10 +1,8 @@
 *.o
 *.so
-uade.pc
+*.a
+libuade.pc
 Makefile
-src/Makefile
-src/frontends/*/Makefile
-
 *~
 *#
 song.conf

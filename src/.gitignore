@@ -1,4 +1,7 @@
 ossupport.c
+uadeipc.c
+uadeutils.c
+unixatomic.c
 sd-sound.[ch]
 gencpu
 uadecore
