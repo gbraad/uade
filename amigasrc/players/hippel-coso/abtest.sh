@@ -11,6 +11,8 @@ find "${dname}" -type f |while read fname ; do
     echo "Synthesizing $fname"
     bname=$(basename "${fname}")
     for player in hipc newhipc ; do
-	uade123 -f "synth/${bname}_${player}.wav" -P "${player}" "${fname}"
+	uade123 -f tmp.wav -P "${player}" "${fname}"
+	# sox tmp.wav "synth/${bname}_${player}.wav" silence 1 0.1 1%
+	mv tmp.wav "synth/${bname}_${player}.wav"
     done
 done
