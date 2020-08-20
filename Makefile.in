@@ -50,6 +50,12 @@ uadefs:	staticlibuade
 uadefsinstall:	uadefs
 	$(MAKE) -C src/frontends/uadefs install
 
+score:
+	$(MAKE) -C amigasrc/score
+
+scoreinstall:	
+	@true
+
 uadesimple:	staticlibuade
 	$(MAKE) -C src/frontends/uadesimple
 
@@ -74,6 +80,7 @@ feclean:
 	$(MAKE) -C src/frontends/uade123 clean
 	$(MAKE) -C src/frontends/uadefs clean
 	$(MAKE) -C src/frontends/uadesimple clean
+	$(MAKE) -C amigasrc/score clean
 
 clean:	
 	$(MAKE) -C src clean

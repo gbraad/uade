@@ -48,6 +48,7 @@ uselibuade="yes"
 useuadefs="no"
 useuade123="yes"
 useuadecore="yes"
+usescore="no"
 
 pkgrequirements="ao"
 textscope="no"
@@ -58,6 +59,7 @@ set_all_no() {
     useuadefs="no"
     useuade123="no"
     useuadecore="no"
+    usescore="no"
 }
 
 for opt in "$@" ; do
@@ -371,6 +373,11 @@ if test "$?" != "0"; then
     exit 1
 fi
 
+VASM=$(which vasm.vasmm68k-mot)
+if [[ -n ${VASM} ]] ; then
+    usescore="yes"
+fi
+
 AOFLAGS=""
 AOLIBS="-lao"
 if test -n "$PKG_CONFIG" ; then
@@ -564,12 +571,14 @@ echo "uade123                                 : $useuade123"
 echo "uadefs                                  : $useuadefs"
 echo "Text scope support                      : $textscope"
 echo "bencode-tools prefix                    : $bencodetoolsprefix"
+echo "vasm (to compile score)                 : ${VASM}"
 echo
 
 libuaderule=""
 uadecorerule=""
 uade123rule=""
 uadefsrule=""
+scorerule=""
 
 if test "$uselibuade" = "yes" ; then
     libuaderule="libuade"
@@ -583,10 +592,13 @@ fi
 if test "$useuadefs" = "yes" ; then
     uadefsrule="uadefs"
 fi
+if test "$usescore" = "yes" ; then
+    scorerule="score"
+fi
 
 compilerules="uadesimple"
 installrules=""
-for component in $libuaderule $uadecorerule $uade123rule $uadefsrule ; do
+for component in $libuaderule $uadecorerule $uade123rule $uadefsrule $scorerule ; do
     compilerules="$compilerules $component"
     installrules="$installrules $component""install"
 done
