@@ -1,6 +1,5 @@
 ;               T
 
-	SECTION	hippelcode,code_c
 lbC000026	MOVEQ	#0,D0
 	MOVE.W	(lbW000C02,PC),D0
 	RTS

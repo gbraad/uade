@@ -1,20 +1,17 @@
 ;               T
 
-	incdir	asm:
 	include	custom.i
 	include	rmacros.i
 	include	exec_lib.i
-	incdir	include:
-	include	misc/deliplayer.i
+	include	misc/DeliPlayer.i
 
-	section	hipcplayer,code
+	section	hipcplayer,code_c
 	moveq	#-1,d0
 	rts
 	dc.b	'DELIRIUM'
 	dc.l	table
 	dc.b	'NO NO... UADE TEAM',0
 	dc.b	'$VER: hipc player module V0.2 for UADE (17.02.2003)',0
-	dc.b	'$COPYRIGHT: Heikki Orsila <heikki.orsila@tut.fi>',0
 	even
 
 table	dc.l	DTP_PlayerName,hipcname
