@@ -1,5 +1,3 @@
-;               T
-
 	include	custom.i
 	include	rmacros.i
 	include	exec_lib.i

@@ -1,5 +1,7 @@
 
 relocator
+	lea	relocator_exe_address(pc),a1
+	move.l	a0,(a1)
 	* a0 is the reloctable binary to process. memory is allocated for the
 	* hunks, data is copied and address values are relocated.
 	cmp.l	#$000003f3,(a0)+
@@ -160,6 +162,11 @@ nosymbolhunk
 not_debug_hunk
 	cmp.l	#$000003f2,(a0)
 	beq	conthunkloop
+	* Print the offset of the file that contains the invalid hunk
+	move.l	a0,d0
+	sub.l	relocator_exe_address(pc),d0
+	bsr	put_value
+	* Print hunk value
 	move.l	(a0),d0
 	bsr	put_value
 	lea	illegalhunkwarn(pc),a0

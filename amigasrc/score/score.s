@@ -3522,6 +3522,7 @@ lev3serverlist	dcb.l	32,0
 
 * hunk relocator variables
 chippoint	dc.l	0
+relocator_exe_address	dc.l	0
 nhunks	dc.l	0
 hunks	dcb.l	100*3,0
 
