@@ -1,3 +1,4 @@
+* See https://sintonen.fi/src/loadseg/LS.asm for help when in trouble
 
 relocator
 	lea	relocator_exe_address(pc),a1
@@ -88,6 +89,7 @@ hunksizeerr	dc.b	'hunk size error',0
 symbolhunkwarn	dc.b	'hunk relocator: symbol hunk warning!',0
 illegalhunkwarn	dc.b	'illegal hunk',0
 debughunkwarn	dc.b	'hunk relocator: debug hunk warning!', 0
+hunk_3f7_warning	dc.b	'hunk 3f7 ending was not aligned by four. experimental feature used.',0
 	even
 
 DataCodeHunk	move.l	(a0)+,d0	* take hunk length (in long words)
@@ -188,7 +190,8 @@ r_size_match_2	pushr	a0
 	pullr	a0
 	bra	conthunkloop
 
-handlerelochunk	move.l	(a0)+,d0	* take number of reloc entries
+handlerelochunk
+	move.l	(a0)+,d0	* take number of reloc entries
 	tst.l	d0
 	bne.b	morereloentries
 	rts
@@ -208,6 +211,15 @@ handlerelochunk_3f7
 	move	(a0)+,d0	* take number of reloc entries
 	tst.l	d0
 	bne.b	morereloentries_3f7
+	move.l	a0,d0
+	and.b	#$2,d0
+	beq.b	.divisiblebyfour
+	pushr	a0
+	lea	hunk_3f7_warning(pc),a0
+	bsr	put_string
+	pullr	a0
+	addq.l	#2,a0
+.divisiblebyfour
 	rts
 morereloentries_3f7
 	moveq	#0,d1
