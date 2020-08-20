@@ -1528,7 +1528,8 @@ do_ep_check	move.l	d0,a0
 	bne.b	song_ok
 	moveq	#UADE_CHECKERROR,d0
 	bsr	put_message_by_value
-	bra	dontplay
+.loopforever
+	bra	.loopforever
 do_no_check
 song_ok	rts
 
