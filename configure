@@ -542,7 +542,7 @@ if test -z "$bencodetoolsprefix" ; then
 	echo
 	echo "Or directly clone the source with:"
 	echo
-	echo "    git clone https://gitlab.com/heikkiorsila/bencode-tools.git"
+	echo "    git clone https://gitlab.com/heikkiorsila/bencodetools.git"
 	echo
 	exit 1
     fi
