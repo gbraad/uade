@@ -9,7 +9,7 @@ relocator
 	bne	hunkerror
 	tst.l	(a0)+
 	bne	hunkerror
-	lea	nhunks(pc),a1
+	lea	relocator_nhunks(pc),a1
 	move.l	(a0)+,(a1)		* take number of hunks
 	* we could clear upper word of number of hunks, because original
 	* implementation only uses 16 bits. it's an undocumented feature.
@@ -20,9 +20,9 @@ relocator
 	bhi	hunkerror
 	addq.l	#8,a0			* skip hunk load infos
 
-	lea	hunks(pc),a1
+	lea	relocator_hunks(pc),a1
 	lea	chippoint(pc),a2
-	move.l	nhunks(pc),d7
+	move.l	relocator_nhunks(pc),d7
 	subq	#1,d7
 hunkcheckloop	move.l	(a0)+,d1
 	move.l	d1,d2
@@ -43,8 +43,8 @@ hunkcheckloop	move.l	(a0)+,d1
 	move.l	d0,(a2)			* put new relocpoint
 	dbf	d7,hunkcheckloop
 
-	lea	hunks(pc),a1
-	move.l	nhunks(pc),d7
+	lea	relocator_hunks(pc),a1
+	move.l	relocator_nhunks(pc),d7
 	subq	#1,d7
 	bmi.b	nomorehunks
 
@@ -77,19 +77,11 @@ conthunkloop	cmp.l	#$000003f2,(a0)+
 	pull	d7/a1
 	add	#12,a1
 	dbf	d7,HunkLoop
-nomorehunks	move.l	hunks+8(pc),a0
+nomorehunks	move.l	relocator_hunks+8(pc),a0
 	moveq	#0,d0
 	rts
 hunkerror	moveq	#-1,d0
 	rts
-
-hunksizewarn	dc.b	'hunk size warn',0
-bsshunksizewarn	dc.b	'bss hunk size warn',0
-hunksizeerr	dc.b	'hunk size error',0
-symbolhunkwarn	dc.b	'hunk relocator: symbol hunk warning!',0
-illegalhunkwarn	dc.b	'illegal hunk',0
-debughunkwarn	dc.b	'hunk relocator: debug hunk warning!', 0
-	even
 
 DataCodeHunk	move.l	(a0)+,d0	* take hunk length (in long words)
 	lsl.l	#2,d0
@@ -195,7 +187,7 @@ handlerelochunk
 	bne.b	morereloentries
 	rts
 morereloentries	move.l	(a0)+,d1	* take index of associated hunk for
-	lea	hunks(pc),a3	* following reloc entries
+	lea	relocator_hunks(pc),a3	* following reloc entries
 	mulu	#12,d1
 	move.l	8(a3,d1),d2	* take reloced address for hunk
 relochunkloop	move.l	(a0)+,d1	* take reloc entry (offset)
@@ -219,7 +211,7 @@ handlerelochunk_3f7
 morereloentries_3f7
 	moveq	#0,d1
 	move	(a0)+,d1	* take index of associated hunk for
-	lea	hunks(pc),a3	* following reloc entries
+	lea	relocator_hunks(pc),a3	* following reloc entries
 	mulu	#12,d1
 	move.l	8(a3,d1),d2	* take reloced address for hunk
 	moveq	#0,d1
@@ -229,3 +221,15 @@ relochunkloop_3f7
 	subq.l	#1,d0
 	bne.b	relochunkloop_3f7
 	bra.b	handlerelochunk_3f7
+
+relocator_exe_address	dc.l	0
+relocator_nhunks	dc.l	0
+relocator_hunks	dcb.l	100*3,0
+
+hunksizewarn	dc.b	'hunk size warn',0
+bsshunksizewarn	dc.b	'bss hunk size warn',0
+hunksizeerr	dc.b	'hunk size error',0
+symbolhunkwarn	dc.b	'hunk relocator: symbol hunk warning!',0
+illegalhunkwarn	dc.b	'illegal hunk',0
+debughunkwarn	dc.b	'hunk relocator: debug hunk warning!', 0
+	even
