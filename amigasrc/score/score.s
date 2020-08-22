@@ -3524,7 +3524,6 @@ lev3serverlist	dcb.l	32,0
 * hunk relocator variables
 chippoint	dc.l	0
 
-loadbase	dc.l	0
 binbase	dc.l	0	* contains pointer to relocated player code
 moduleptr	dc.l	0
 modulesize	dc.l	0
