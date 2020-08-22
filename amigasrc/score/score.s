@@ -930,12 +930,13 @@ set_message_traps
 	rts
 
 
-paska	PLAYERHEADER	0
-paskaend
+dummy_player_header
+	PLAYERHEADER	0
+dummy_player_header_end
 
 parse_player_tags
 	move.l	binbase(pc),a0
-	move.l	paskaend-paska-4(a0),a0
+	move.l	dummy_player_header_end-dummy_player_header-4(a0),a0
 	
 tagloop	move.l	(a0),d0
 	tst.l	d0
@@ -1041,7 +1042,7 @@ endtagloop
 
 
 get_player_info	move.l	binbase(pc),a0
-	move.l	paskaend-paska-4(a0),a0
+	move.l	dummy_player_header_end-dummy_player_header-4(a0),a0
 infoloop	move.l	(a0),d0
 	tst.l	d0
 	beq	endinfoloop
