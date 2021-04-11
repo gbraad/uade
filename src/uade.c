@@ -1147,7 +1147,7 @@ void uadecore_set_automatic_song_end(int song_end_possible)
    uade will always switch to next song (if any) */
 void uadecore_song_end(char *reason, int kill_it)
 {
-  uint8_t space[sizeof(struct uade_msg) + 4 + 256];
+  uint8_t space[sizeof(struct uade_msg) + 8 + 256];
   struct uade_msg *um = (struct uade_msg *) space;
   int tailbytes = ((intptr_t) sndbufpt) - ((intptr_t) sndbuffer);
   um->msgtype = UADE_REPLY_SONG_END;
