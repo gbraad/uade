@@ -17,6 +17,8 @@
  Occasional memory reads over buffer ranges can occur, but they will of course
  be fixed when spotted :P The worst that can happen with reading over the
  buffer range is a core dump :)
+
+ TODO: Add ProRunner 1.0 detection. At offset 0x438 string "SNT."
 */
 
 #include <uade/amifilemagic.h>
@@ -128,10 +130,78 @@ static const char *offset_0024_patterns[] = {
   NULL, NULL
 };
 
-// TODO: Complete list from amifilemagic
+// TODO: Complete list from amifilemagic.
+//       offset_0000_patterns and offset_0024_patterns have been input.
 static struct uade_ext_to_format_version etf[] = {
+	{.file_ext = "aon4", .format = "Art Of Noise (4ch)"},
+	{.file_ext = "aon8", .format = "Art Of Noise (8ch)"},
+	{.file_ext = "abk", .format = "Amos ABK"},
+	{.file_ext = "ahx", .format = "AHX"},
+	{.file_ext = "amc", .format = "A.M.Composer"},
+	{.file_ext = "bds", .format = "Benn Daglish"},
+	{.file_ext = "bsi", .format = "Future Composer (BSI)"},
+	{.file_ext = "bss", .format = "Beathovem Synhtesizer"},
+	{.file_ext = "core", .format = "Core Design"},
+	{.file_ext = "cust", .format = "Custom"},
+	{.file_ext = "dl", .format = "Dave Lowe"},
+	{.file_ext = "dl_deli", .format = "Dave Lowe"},
+	{.file_ext = "dln", .format = "Dave Lowe New"},
+	{.file_ext = "dm1", .format = "Delta Music", .version = "1"},
+	{.file_ext = "dm2", .format = "Delta Music", .version = "2"},
+	{.file_ext = "digi", .format = "DigiBooster"},
+	{.file_ext = "dss", .format = "DSS"},
 	{.file_ext = "dw", .format = "David Whittaker"},
+	// Note: ems is not recognized yet
+	// {.file_ext = "ems", .format = "Editeur Musical Sequentiel"},
+	{.file_ext = "emsv6", .format = "Editeur Musical Sequentiel",
+	 .version = "6"},
+	{.file_ext = "fc13", .format = "Future Composer", .version="1.3"},
+	{.file_ext = "fc14", .format = "Future Composer", .version="1.4"},
+	{.file_ext = "fc-m", .format = "FC-M Packer"},
+	{.file_ext = "fp", .format = "Future Player"},
+	{.file_ext = "ftm", .format = "Face The Music"},
+	{.file_ext = "fuzz", .format = "Fuzzac Packer"},
+	{.file_ext = "glue", .format = "GlueMon"},
+	{.file_ext = "gray", .format = "Fred Gray"},
+	{.file_ext = "hd", .format = "Howie Davies"},
+	{.file_ext = "is", .format = "In Stereo", .version="1"},
+	{.file_ext = "is20", .format = "In Stereo", .version="2"},
+	{.file_ext = "jam", .format = "JamCracker"},
+	{.file_ext = "jmf", .format = "Janko Mrsic-Flogel"},
+	{.file_ext = "mxtx", .format = "Maxtrax"},
+	{.file_ext = "mcmd_org", .format = "MCMD"},
+	{.file_ext = "mmdc", .format = "MED Packer"},
+	{.file_ext = "ml", .format = "Musicline Editor"},
 	{.file_ext = "mod", .format = "ProTracker", .version="3.0"},
+	{.file_ext = "mso", .format = "Medley"},
+	// Note: Check spelling of MultiTracker, find modules
+	{.file_ext = "mtm", .format = "MultiTracker"},
+	{.file_ext = "mtp2", .format = "Marjo Tom's Player"},  // Major Tom
+	{.file_ext = "ntp", .format = "NovoTrade Packer"},
+	{.file_ext = "okt", .format = "Oktalyzer"},
+	{.file_ext = "osp", .format = "Synth Pack"},
+	{.file_ext = "p40a", .format = "The Player", .version = "4.0a"},
+	{.file_ext = "p40b", .format = "The Player", .version = "4.0b"},
+	{.file_ext = "p41a", .format = "The Player", .version = "4.1a"},
+	{.file_ext = "p50a", .format = "The Player", .version = "5.0a"},
+	{.file_ext = "p60a", .format = "The Player", .version = "6.0a"},
+	{.file_ext = "p61a", .format = "The Player", .version = "6.1a"},
+	// Note: pm1 is not recognized yet
+	// {.file_ext = "pm1", .format = "Promizer"},
+	{.file_ext = "pm20", .format = "Promizer", .version = "2.0"},
+	{.file_ext = "pm40", .format = "Promizer", .version = "4.0"},
+	// Note: pru1 is not recognized yet
+	{.file_ext = "pru1", .format = "ProRunner", .version = "1.0"},
+	{.file_ext = "pru2", .format = "ProRunner", .version = "2.0"},
+	{.file_ext = "riff", .format = "Riff Raff"},
+	{.file_ext = "sa", .format = "Sonic Arranger"},
+	{.file_ext = "spl", .format = "Sound Programming Language"},
+	{.file_ext = "stp3", .format = "Soundtracker pro II"},
+	{.file_ext = "synmod", .format = "Syntracker"},
+	{.file_ext = "tp1", .format = "Tracker Packer", .version = "1"},
+	{.file_ext = "tp2", .format = "Tracker Packer", .version = "2"},
+	{.file_ext = "tp3", .format = "Tracker Packer", .version = "3"},
+	{.file_ext = "tpu", .format = "Dirk Bialluch"},
 	{.file_ext = NULL},
 };
 
