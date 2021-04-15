@@ -140,10 +140,13 @@ const struct uade_ext_to_format_version *uade_file_ext_to_format_version(
 	const struct uade_detection_info *info)
 {
 	size_t i;
+	if (info == NULL)
+		return NULL;
+	const char *file_ext = info->ext;
 	for (i = 0;; i++) {
 		if (etf[i].file_ext == NULL)
 			break;
-		if (strcasecmp(etf[i].file_ext, info->ext) == 0)
+		if (strcasecmp(etf[i].file_ext, file_ext) == 0)
 			return &etf[i];
 	}
 	return NULL;
