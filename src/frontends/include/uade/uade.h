@@ -69,6 +69,12 @@ struct uade_detection_info {
 	struct eagleplayer *ep;     /* Don't touch */
 };
 
+struct uade_ext_to_format_version {
+	char *file_ext;
+	char *format;
+	char *version;
+};
+
 struct uade_song_info {
 	struct uade_subsong_info subsongs;
 	struct uade_detection_info detectioninfo;
@@ -586,6 +592,9 @@ struct uade_file *uade_file_load(const char *name);
  * data.
  */
 void *uade_read_file(size_t *fsize, const char *filename);
+
+const struct uade_ext_to_format_version *uade_file_ext_to_format_version(
+	const struct uade_detection_info *info);
 
 #ifdef __cplusplus
 }

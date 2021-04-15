@@ -19,8 +19,11 @@
  buffer range is a core dump :)
 */
 
-#include <uade/uadeutils.h>
 #include <uade/amifilemagic.h>
+#include <uade/ossupport.h>
+#include <uade/uade.h>
+#include <uade/uadeutils.h>
+#include <uade/unixsupport.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -125,6 +128,26 @@ static const char *offset_0024_patterns[] = {
   NULL, NULL
 };
 
+// TODO: Complete list from amifilemagic
+static struct uade_ext_to_format_version etf[] = {
+	{.file_ext = "dw", .format = "David Whittaker"},
+	{.file_ext = "mod", .format = "ProTracker", .version="3.0"},
+	{.file_ext = NULL},
+};
+
+
+const struct uade_ext_to_format_version *uade_file_ext_to_format_version(
+	const struct uade_detection_info *info)
+{
+	size_t i;
+	for (i = 0;; i++) {
+		if (etf[i].file_ext == NULL)
+			break;
+		if (strcasecmp(etf[i].file_ext, info->ext) == 0)
+			return &etf[i];
+	}
+	return NULL;
+}
 
 /* check for 'pattern' in 'buf'.
    the 'pattern' must lie inside range [0, maxlen) in the buffer.
