@@ -1,9 +1,10 @@
-Short:    EaglePlayer "Mugician II" external player
-Author:   Wanted Team
-Uploader: wt@jho.pol.pl (Don Adan/Wanted Team)
-Version:  4
-Type:     mus/play
-Replaces: mus/play/EP_Mugician2.lha
+Short:        EaglePlayer "Mugician II" external player
+Author:       Wanted Team
+Uploader:     Don Adan <DonAdan@wp.pl>
+Version:      8
+Type:         mus/play
+Replaces:     mus/play/EP_Mugician2.lha
+Architecture: m68k-amigaos
 
 This is a new version of a different external "Mugician II" module player
 for EaglePlayer 1.54/2.00+. It's a player for all known "Mugician II" modules.
@@ -41,6 +42,27 @@ Version 4
 - fixed the Config routine, now the Workbench screen is correctly unlocked
   (Thanks to Luca 'Hexaae' Longone and 'Agony')
 
+Version 5
+
+- loading configuration from "Configs/" directory is now fixed
+- extended mixing routine up to 28.8kHz (PAL screen limit)
+- highly optimised mixing routine, now 24kHz works for EP1.54 on MC68000
+
+Version 6
+
+- "over the top" optimisation, now 25kHz works for EP1.54 on MC68000
+
+Version 7
+
+- extended mixing routine up to 29583Hz (29313Hz for PAL)
+
+Version 8
+
+- fixed tempo problem for "Moon Child" song, thanks to Jan Krolzig for report
+- again optimised mixing routine, now 26kHz works for EP1.54 on MC68000
+- added special version for MC68020+ (used MC68020+ commands and fastmem
+  buffering)
+
 Notes:
 
 1. The "Mugician II" replay is the third Amiga seven voice soundformat,
@@ -48,7 +70,8 @@ Notes:
 
 2. This version of the "Mugician II" player is configurable via the EP player
    manager. You can set the mixing rate for the mixing channels (4th, 5th,
-   6th and 7th) to any integer value from 1 to 28kHz via a slider gadget.
+   6th and 7th) to any integer value from 1 to 29kHz via a slider gadget.
+   If you select 29kHz then 29.6kHz will be the mixing rate used by the player.
    The default mixing rate is 16kHz and higher rates are only recommended
    for fast CPU's (MC68020+). The configuration will be saved to the
    "EnvArc:EaglePlayer/" and/or "Configs/" directories. If none of these
@@ -58,13 +81,15 @@ Notes:
 
 4. You can get the latest versions of Wanted Team products from:
 
-   http://amiga.emucamp.com/wt/wt.html
+   http://wt.exotica.org.uk
 
 Special greetings go to:
 
 - Metin Seven
 - Reinier "Rhino" van Vliet
 = Ramon Braumuller
-- MCoder <euler@free.fr> for big help with optimizing the replay, especially
+- MCoder <euler@free.fr> for big help with optimising the replay, especially
   the mixing routine
 - Codetapper for help with the Config routine
+- Phil "meynaf" G. for help
+- Jan Krolzig for betatesting

@@ -19,16 +19,16 @@
 
 LOWEST_MIXING_RATE	equ	1
 DEFAULT_MIXING_RATE	equ	16
-HIGHEST_MIXING_RATE	equ	28
+HIGHEST_MIXING_RATE	equ	29
 
 	SECTION	Player_Code,CODE
 
 	PLAYERHEADER Tags
 
-	dc.b	'$VER: Mugician II player module V1.3 (20 Sep 2002)',0
+	dc.b	'$VER: Mugician II player module V1.7 (3 May 2014)',0
 	even
 Tags
-	dc.l	DTP_PlayerVersion,4
+	dc.l	DTP_PlayerVersion,8
 	dc.l	EP_PlayerVersion,9
 	dc.l	DTP_RequestDTVersion,DELIVERSION
 	dc.l	DTP_PlayerName,PlayerName
@@ -61,6 +61,8 @@ Creator
 	dc.b	'(c) 1991-94 Reinier ''Rhino'' van Vliet,',10
 	dc.b	'adapted by Wanted Team',0
 Prefix	dc.b	'MUG2.',0
+CfgPath0
+	dc.b	'/'				; necessary for load Config
 CfgPath1
 	dc.b	'Configs/EP-Mugician_II.cfg',0
 CfgPath2
@@ -72,6 +74,8 @@ ModulePtr
 	dc.l	0
 EagleBase
 	dc.l	0
+BPM
+	dc.w	0
 SampleInfoPtr
 	dc.l	0
 SongName
@@ -268,7 +272,7 @@ SetMixRate					;Codetapper added (when user
 	moveq	#0,D0				;moves the slider bar along)
 	move.w	im_Code(A1),D0			;Get slider value and for
 	cmp.w	#LOWEST_MIXING_RATE,D0		;safety, make sure that 
-	blt.b	DefaultMix			;it's between 1 and 28
+	blt.b	DefaultMix			;it's between 1 and 29
 	cmp.w	#HIGHEST_MIXING_RATE,D0
 	ble.b	PutMixRate
 DefaultMix
@@ -365,7 +369,7 @@ MixingRateArray
 
 MixingRateTagList					;Codetapper
 	dc.l	GTSL_Min,LOWEST_MIXING_RATE		;Lowest value (1 kHz)
-	dc.l	GTSL_Max,HIGHEST_MIXING_RATE		;Highest value (28 kHz)
+	dc.l	GTSL_Max,HIGHEST_MIXING_RATE		;Highest value (29 kHz)
 	dc.l	GTSL_Level				;Current level of slider (defaults to 0). (V36)
 InitMixingRate
 	dc.l	DEFAULT_MIXING_RATE			;Initial value (16 kHz)
@@ -411,7 +415,7 @@ Config
 	bra.b	SkipPath
 SecondTry
 	moveq	#0,D5
-	lea	CfgPath1(PC),A0
+	lea	CfgPath0(PC),A0
 SkipPath
 	move.l	A0,D1
 	move.l	#1005,D2			; old file
@@ -430,7 +434,7 @@ SkipPath
 	bne.b	Default
 	move.w	(A4),D1
 	beq.b	Default
-	cmp.w	#28,D1
+	cmp.w	#29,D1
 	bhi.b	Default
 	bra.b	PutRate
 Default
@@ -487,7 +491,7 @@ PatternInit
 	clr.w	PI_Songpos(A0)		; Current Position in Song (from 0)
 	move.w	InfoBuffer+Length+2(PC),PI_MaxSongPos(A0)	; Songlength
 
-	move.w	#125,PI_BPM(A0)
+	move.w	BPM(PC),PI_BPM(A0)
 
 	lea	STRIPE1(PC),A1
 	clr.l	(A1)+
@@ -855,8 +859,8 @@ Exit0
 
 SetVol
 	move.l	A0,-(A7)
-	lea	StructAdr+UPS_Voice1Vol(PC),A0
-	cmp.l	#$DFF0A0,A6
+	lea	StructAdr+UPS_Voice4Vol(PC),A0
+	cmp.l	#$DFF0D0,A6
 	beq.s	.SetVoice
 	lea	StructAdr+UPS_Voice2Vol(PC),A0
 	cmp.l	#$DFF0B0,A6
@@ -874,8 +878,8 @@ Exit1
 
 SetAdr
 	move.l	A0,-(A7)
-	lea	StructAdr+UPS_Voice1Adr(PC),A0
-	cmp.l	#$DFF0A0,A6
+	lea	StructAdr+UPS_Voice4Adr(PC),A0
+	cmp.l	#$DFF0D0,A6
 	beq.s	.SetVoice
 	lea	StructAdr+UPS_Voice2Adr(PC),A0
 	cmp.l	#$DFF0B0,A6
@@ -894,8 +898,8 @@ Exit2
 
 SetLen
 	move.l	A0,-(A7)
-	lea	StructAdr+UPS_Voice1Len(PC),A0
-	cmp.l	#$DFF0A0,A6
+	lea	StructAdr+UPS_Voice4Len(PC),A0
+	cmp.l	#$DFF0D0,A6
 	beq.s	.SetVoice
 	lea	StructAdr+UPS_Voice2Len(PC),A0
 	cmp.l	#$DFF0B0,A6
@@ -919,8 +923,7 @@ Check2
 
 	lea	text(PC),A1
 	moveq	#$19,D6
-test	move.b	(A1)+,D2
-	cmp.b	(A0)+,D2
+test	cmpm.b	(A0)+,(A1)+
 	bne.b	Fault
 	dbra	D6,test	
 	moveq	#0,D0
@@ -952,6 +955,7 @@ InitPlayer
 	lea	ModulePtr(PC),A6
 	move.l	A0,(A6)+			; module buffer
 	move.l	A5,(A6)+			; EagleBase
+	move.w	#125,(A6)+			; default BPM
 
 	lea	InfoBuffer(PC),A4
 	move.l	D0,LoadSize(A4)
@@ -984,7 +988,7 @@ NextLength
 	lsl.l	#7,D1
 	add.l	D1,D0
 	add.l	D1,A2
-	move.l	A2,(A6)				; SampleInfoPtr
+	move.l	A2,(A6) 			; SampleInfoPtr
 	move.l	(A0)+,D1
 	move.l	D1,Samples(A4)
 	lsl.l	#5,D1
@@ -999,6 +1003,11 @@ NextLength
 	moveq	#EPR_ModuleTooShort,D0		; error message
 	rts
 SizeOK	
+	cmp.l	#625381,D0		; MoonChild song
+	bne.b	NoMoon
+	lea	BPM(PC),A0
+	move.w	#202,(A0)		; MoonChild BPM
+NoMoon
 	moveq	#4,D0
 Dalej
 	lea	-16(A1),A2
@@ -1013,8 +1022,11 @@ SubCheck
 FoundSub
 	move.l	D0,SubSongs(A4)
 
+	lea	Tables(PC),A0
+	tst.w	(A0)
+	bne.b	InitDone
 	bsr.w	lbC010B32			; init tables
-
+InitDone
 	movea.l	dtg_AudioAlloc(A5),A0
 	jmp	(A0)
 
@@ -1038,8 +1050,15 @@ ClearUPS
 	cmp.l	A0,A1
 	bne.b	ClearUPS
 
+	lea	lbW010E2C(PC),A0
+	lea	lbL010FB0+4(PC),A1
+ClearUp
+	clr.w	(A0)+
+	cmp.l	A0,A1
+	bne.b	ClearUp
+
 	lea	lbW010AC8(PC),A0
-	lea	lbC010B00(PC),A1
+	lea	Period4+2(PC),A1
 	moveq	#1,D0
 	move.w	D0,(A0)+
 	move.w	D0,(A0)+
@@ -1072,27 +1091,41 @@ NextSong
 	move.w	MixRate(PC),D1			; D1 = mixing rate
 	move.w	D1,PlayFrequency+2(A4)
 	bsr.b	InitData
-	bra.w	Init
+	bsr.w	Init
+
+	moveq	#0,D0
+	lea	lbL010EF4(PC),A0
+	move.w	D0,(A0)
+	move.w	D0,48(A0)
+	move.w	D0,48*2(A0)
+	move.w	D0,48*3(A0)
+	lea	Tables(PC),A1
+	lea	lbL010AD0(PC),A0
+	move.l	A1,(A0)+
+	move.l	A1,(A0)+
+	move.l	A1,(A0)+
+	move.l	A1,(A0)
+	rts
 
 InitData
-	move.w	D1,D3
-	mulu.w	#350,D1
-	mulu.w	#1000,D1			; * 1kHz
-	divu.w	#17633,D1
-	addq.w	#1,D1
-	bclr	#0,D1
-	move.w	D1,D2
-	lsr.w	#1,D2
-	lea	MixLength(PC),A0
-	lea	LoopCounter(PC),A1
-	subq.w	#1,D1
-	move.w	D2,(A0)
-	move.w	D1,(A1)
 	lea	PeriodsTable(PC),A0
-	add.w	D3,D3
-	move.w	0(A0,D3.W),D1
-	lea	lbW010BD2(PC),A0		; period
-	move.w	D1,(A0)
+	add.w	D1,D1
+	move.w	0(A0,D1.W),D2
+	lea	lbW010BD2(PC),A0	; period
+	move.w	D2,(A0)
+	move.l	#71591,D1		; 50Hz = NTSC (715909) ex_EClockFrequency/10
+	divu.w	D2,D1
+	addq.w	#1,D1
+	cmp.w	#125,BPM
+	beq.b	Hz50
+	mulu.w	#130,D1			; MoonChild tempo fix
+	divu.w	#210,D1
+Hz50
+	lsr.w	#1,D1
+	lea	MixLength(PC),A0
+	move.w	D1,(A0)+
+	subq.w	#1,D1
+	move.w	D1,(A0)			; loop counter
 	rts
 
 MixLength
@@ -1131,8 +1164,8 @@ PeriodsTable
 	dc.w	138			; 26		25938	-> ~26kHz
 	dc.w	133			; 27		26913	-> ~27kHz
 	dc.w	128			; 28		27965	-> ~28kHz
-;	dc.w	124			; 29		28867	-> Maximum
-
+;	dc.w	123			; 29		29101	-> ~29kHz
+	dc.w	121			; 29		29583	-> Aud0 Maximum
 
 ***************************************************************************
 ***************************** DTP_EndSound ********************************
@@ -1155,13 +1188,13 @@ EndSound
 StartInt
 	movem.l	D0/A6,-(A7)
 	lea	InterruptStruct(PC),A1
-	moveq	#INTB_AUD3,D0
+	moveq	#INTB_AUD0,D0
 	move.l	4.W,A6			; baza biblioteki exec do A6
 	jsr	_LVOSetIntVector(A6)
-	move.l	D0,Audio3
+	move.l	D0,Audio0
 	movem.l	(A7)+,D0/A6
-	move.w	#$8400,$DFF09A
-	move.w	#$8008,$DFF096
+	move.w	#$8080,$DFF09A
+	move.w	#$8001,$DFF096
 	rts
 
 InterruptStruct
@@ -1173,10 +1206,10 @@ InterruptStruct
 	dc.l	0
 	dc.l	Interrupt
 Name
-	dc.b	'Mugician II Aud3 Interrupt',0,0
+	dc.b	'Mugician II Aud0 Interrupt',0,0
 	even
 
-Audio3
+Audio0
 	dc.l	0
 
 ***************************************************************************
@@ -1185,11 +1218,11 @@ Audio3
 
 StopInt
 	lea	$DFF000,A0
-	move.w	#8,$96(A0)
-	move.w	#$400,$9A(A0)
-	move.w	#$400,$9C(A0)
-	moveq	#INTB_AUD3,D0
-	move.l	Audio3(PC),A1
+	move.w	#1,$96(A0)
+	move.w	#$80,$9A(A0)
+	move.w	#$80,$9C(A0)
+	moveq	#INTB_AUD0,D0
+	move.l	Audio0(PC),A1
 	move.l	A6,-(A7)
 	move.l	4.W,A6
 	jsr	_LVOSetIntVector(a6)
@@ -1211,21 +1244,21 @@ Interrupt
 	clr.w	UPS_Voice4Per(A0)
 	move.w	#UPSB_Adr!UPSB_Len!UPSB_Per!UPSB_Vol,UPS_Flags(A0)
 
-	move.w	#$400,$DFF09A
-	move.w	#$400,$DFF09C
-	move.l	lbL01097E(PC),$DFF0D0
-	move.w	MixLength(PC),$DFF0D4
-	move.l	lbL01097E(PC),UPS_Voice4Adr(A0)
-	move.w	MixLength(PC),UPS_Voice4Len(A0)
+	move.w	#$80,$DFF09A
+	move.w	#$80,$DFF09C
+	move.l	lbL01097E(PC),$DFF0A0
+	move.w	MixLength(PC),$DFF0A4
+	move.l	lbL01097E(PC),UPS_Voice1Adr(A0)
+	move.w	MixLength(PC),UPS_Voice1Len(A0)
 
 	bsr.w	Play
 
-	move.w	#$8400,$DFF09A
-	move.w	RightVolume(PC),$DFF0D8
+	move.w	#$8080,$DFF09A
+	move.w	RightVolume(PC),$DFF0A8
 
 	lea	StructAdr(PC),A0
-	move.w	RightVolume(PC),UPS_Voice4Vol(A0)
-	move.w	lbW010BD2(PC),UPS_Voice4Per(A0)
+	move.w	RightVolume(PC),UPS_Voice1Vol(A0)
+	move.w	lbW010BD2(PC),UPS_Voice1Per(A0)
 	clr.w	UPS_Enabled(A0)
 
 	movem.l	(SP)+,D1-A6
@@ -1264,12 +1297,12 @@ lbC00F7D6
 ;	CMP.B	(A1)+,D2
 ;	BNE.W	lbC00F8A4
 ;	DBRA	D6,lbC00F7E4
-
-	moveq	#0,D6
-
 	MOVEQ	#0,D4
 	MOVE.W	D0,D4
-	MOVE.W	D4,D6
+;	MOVE.W	D4,D6
+
+	move.l	D4,D6
+
 	ASL.W	#4,D6
 ;	LEA	mod+76,A4
 ;	LEA	mod,A5
@@ -1353,30 +1386,41 @@ lbC00F8EA	CLR.L	(A0)+
 	CLR.W	(A0)+
 	ADDQ.W	#2,A0
 	CLR.L	(A0)+
-	MOVE.W	#$7C,$DFF0A6
+;	MOVE.W	#$7C,$DFF0A6
 	MOVE.W	#$7C,$DFF0B6
 	MOVE.W	#$7C,$DFF0C6
-	MOVE.W	#2,$DFF0A4
+
+	move.w	#$7C,$DFF0D6
+
+;	MOVE.W	#2,$DFF0A4
 	MOVE.W	#2,$DFF0B4
 	MOVE.W	#2,$DFF0C4
+
+	move.w	#2,$DFF0D4
+
 ;	MOVE.L	#lbL0111B4,$DFF0D0
 ;	MOVE.W	#$AF,$DFF0D4
+;	MOVE.W	lbW010BD2(pc),$DFF0D6
+;	MOVE.W	#$40,$DFF0D8
 
 	move.l	lbL01097A(PC),A0
-	move.l	A0,$DFF0D0
+	move.l	A0,$DFF0A0
 	move.w	MixLength(PC),D7
-	move.w	D7,$DFF0D4
+	move.w	D7,$DFF0A4
 	subq.w	#1,D7
+	move.w	lbW010BD2(PC),$DFF0A6
+	move.w	#$40,$DFF0A8
 
-	MOVE.W	lbW010BD2(pc),$DFF0D6
-	MOVE.W	#$40,$DFF0D8
 ;	LEA	lbL0111B4,A0
 ;	MOVE.W	#$AE,D7
 lbC00F95A	CLR.W	(A0)+
 	DBRA	D7,lbC00F95A
-	MOVE.W	#0,$DFF0A8
+;	MOVE.W	#0,$DFF0A8
 	MOVE.W	#0,$DFF0B8
 	MOVE.W	#0,$DFF0C8
+
+	move.w	#0,$DFF0D8
+
 	MOVE.W	#15,$DFF096		; turn off DMA channels
 	MOVEQ	#6,D7
 	LEA	lbL010E40(pc),A0
@@ -1626,16 +1670,25 @@ Play
 	MOVE.L	#lbL010296,lbL010292
 	BSR.W	lbC010902
 	LEA	lbW010E2C(pc),A1
-	LEA	$DFF0A0,A6
+;	LEA	$DFF0A0,A6
+
+	lea	$DFF0D0,A6
+
 	LEA	lbL010E40(pc),A5
-	MOVE.W	#1,10(A1)
+;	MOVE.W	#1,10(A1)
+
+	move.w	#8,10(A1)
+
 	MOVEQ	#0,D6
 ;	TST.W	lbW00FAA0
 ;	BNE.W	lbC00FD18
 	MOVEA.L	lbL010F98(pc),A0
 	BSR.W	lbC00FF9A
 ;lbC00FD18	MOVE.W	#$8008,$DFF096
-	LEA	$10(A6),A6
+;	LEA	$10(A6),A6
+
+	lea	-$20(A6),A6
+
 	LEA	$30(A5),A5
 	MOVEQ	#2,D6
 	MOVE.W	D6,10(A1)
@@ -1756,10 +1809,17 @@ lbC00FEAE	LEA	$30(A5),A5
 
 	clr.w	lbW010ACE
 
-lbC00FF1A	LEA	$DFF0A0,A6
+lbC00FF1A
+;	LEA	$DFF0A0,A6
+
+	lea	$DFF0D0,A6
+
 	LEA	lbL010E40(pc),A5
 	BSR.W	lbC01029E
-	LEA	$10(A6),A6
+;	LEA	$10(A6),A6
+
+	lea	-$20(A6),A6
+
 	LEA	$30(A5),A5
 	BSR.W	lbC01029E
 	LEA	$10(A6),A6
@@ -1843,7 +1903,7 @@ lbC00FC9E
 ;	MOVE.W	#$800F,$DFF096
 
 	bsr.w	PATINFO
-	move.w	#$8007,$DFF096
+	move.w	#$800E,$DFF096
 
 ;lbC00FCA6	MOVEM.L	(SP)+,D0-D7/A0-A6
 ;	TST.W	lbW00F7D4
@@ -2167,7 +2227,7 @@ lbC01026A	CLR.B	15(A5)
 	MOVE.B	13(A5),D0
 	MOVE.B	D0,D1
 	ANDI.B	#15,D1
-	TST.B	D1
+;	TST.B	D1
 	BEQ.W	lbC0104E6
 	MOVE.B	D0,D1
 	ANDI.B	#$F0,D1
@@ -2900,10 +2960,13 @@ lbC0108EA	MOVE.L	4(A3),D1
 lbC010902	MOVEA.L	lbL010FB0(pc),A2
 	LEA	lbL010E24,A4
 	LEA	lbL010E40(pc),A5
-	LEA	$DFF0A0,A6
+;	LEA	$DFF0A0,A6
 ;	MOVEQ	#3,D5
 ;	TST.W	lbW00F7D4
 ;	BEQ.W	lbC010928
+
+	lea	$DFF0D0,A6
+
 	MOVEQ	#2,D5
 lbC010928	TST.W	$14(A5)
 ;	BEQ.W	lbC010956
@@ -2935,13 +2998,26 @@ lbC010928	TST.W	$14(A5)
 	bsr.w	SetLen
 
 lbC010956	LEA	$30(A5),A5
+
+	cmp.w	#2,D5
+	bne.b	No4
+	lea	-$30(A6),A6
+No4
 	LEA	$10(A6),A6
 	DBRA	D5,lbC010928
 	RTS
 
-lbC010964	MOVE.L	A4,(A6)
-	MOVE.W	#4,4(A6)
+lbC010964	MOVE.L	A4,(A6)		; empty
+;	MOVE.W	#4,4(A6)
+
+	move.w	#2,4(A6)		; empty sample length
+
 	LEA	$30(A5),A5
+
+	cmp.w	#2,D5
+	bne.b	No4e
+	lea	-$30(A6),A6
+No4e
 	LEA	$10(A6),A6
 	DBRA	D5,lbC010928
 	RTS
@@ -2949,124 +3025,302 @@ lbC010964	MOVE.L	A4,(A6)
 lbL01097A	dc.l	lbL0111B4
 lbL01097E	dc.l	lbL010FB4
 
-lbC010982
-;	MOVEA.L	lbL010AD0(pc),A0
-;	MOVEA.L	lbL010AD4(pc),A1
-;	MOVEA.L	lbL010AD8(pc),A2
-;	MOVEA.L	lbL010ADC(pc),A3
+; original mixing routine
 
-	lea	EmptyBuffer,A4
-	move.l	lbL010AD0(PC),D0
-	bne.b	Ptr1OK
-	move.l	A4,D0
-Ptr1OK
-	move.l	D0,A0
-	move.l	lbL010AD4(PC),D0
-	bne.b	Ptr2OK
-	move.l	A4,D0
-Ptr2OK
-	move.l	D0,A1
-	move.l	lbL010AD8(PC),D0
-	bne.b	Ptr3OK
-	move.l	A4,D0
-Ptr3OK
-	move.l	D0,A2
-	move.l	lbL010ADC(PC),D0
-	bne.b	Ptr4OK
-	move.l	A4,D0
-Ptr4OK
-	move.l	D0,A3
-
-	MOVE.L	lbL01097A(pc),D0
-	MOVE.L	lbL01097E(pc),lbL01097A
-	MOVE.L	D0,lbL01097E
-	MOVEA.L	lbL01097A(pc),A4
+;lbC010982	MOVEA.L	lbL010AD0,A0
+;	MOVEA.L	lbL010AD4,A1
+;	MOVEA.L	lbL010AD8,A2
+;	MOVEA.L	lbL010ADC,A3
+;	MOVE.L	lbL01097A,D0
+;	MOVE.L	lbL01097E,lbL01097A
+;	MOVE.L	D0,lbL01097E
+;	MOVEA.L	lbL01097A,A4
 ;	MOVE.L	A4,$DFF0D0
-	MOVEQ	#0,D0
-	MOVEQ	#0,D1
-	MOVE.W	lbW010BD2(pc),D0
-	MOVE.W	lbL010EE0(pc),D1
-	CMPI.W	#$7C,D1
+;	MOVEQ	#0,D0
+;	MOVEQ	#0,D1
+;	MOVE.W	lbW010BD2,D0
+;	MOVE.W	lbL010EE0,D1
+;	CMPI.W	#$7C,D1
 ;	BHI.W	lbC0109EA
-
-	bhi.b	lbC0109EA
-
-	MOVE.W	#1,lbW010AC8
+;	MOVE.W	#1,lbW010AC8
 ;	MOVE.L	#0,lbL010BC2
 ;	BRA.W	lbC0109FE
 
-	clr.l	lbL010BC2
-	bra.b	lbC0109FE
-
-lbC0109EA	BSR.W	lbC010B00
-	MOVEQ	#0,D2
-	MOVE.W	lbB010BC0(pc),D2
-	ASL.L	#8,D2
-	MOVE.L	D2,lbL010BC2
-lbC0109FE	MOVEQ	#0,D0
-	MOVEQ	#0,D1
-	MOVE.W	lbW010BD2(pc),D0
-	MOVE.W	lbW010F10(pc),D1
-	CMPI.W	#$7C,D1
+;lbC0109EA	BSR.W	lbC010B00
+;	MOVEQ	#0,D2
+;	MOVE.W	lbB010BC0,D2
+;	ASL.L	#8,D2
+;	MOVE.L	D2,lbL010BC2
+;lbC0109FE	MOVEQ	#0,D0
+;	MOVEQ	#0,D1
+;	MOVE.W	lbW010BD2,D0
+;	MOVE.W	lbW010F10,D1
+;	CMPI.W	#$7C,D1
 ;	BHI.W	lbC010A2C
-
-	bhi.b	lbC010A2C
-
-	MOVE.W	#1,lbW010ACA
+;	MOVE.W	#1,lbW010ACA
 ;	MOVE.L	#0,lbL010BC6
 ;	BRA.W	lbC010A40
 
-	clr.l	lbL010BC6
-	bra.b	lbC010A40
-
-lbC010A2C	BSR.W	lbC010B00
-	MOVEQ	#0,D2
-	MOVE.W	lbB010BC0(pc),D2
-	ASL.L	#8,D2
-	MOVE.L	D2,lbL010BC6
-lbC010A40	MOVEQ	#0,D0
-	MOVEQ	#0,D1
-	MOVE.W	lbW010BD2(pc),D0
-	MOVE.W	lbW010F40(pc),D1
-	CMPI.W	#$7C,D1
+;lbC010A2C	BSR.W	lbC010B00
+;	MOVEQ	#0,D2
+;	MOVE.W	lbB010BC0,D2
+;	ASL.L	#8,D2
+;	MOVE.L	D2,lbL010BC6
+;lbC010A40	MOVEQ	#0,D0
+;	MOVEQ	#0,D1
+;	MOVE.W	lbW010BD2,D0
+;	MOVE.W	lbW010F40,D1
+;	CMPI.W	#$7C,D1
 ;	BHI.W	lbC010A6E
-
-	bhi.b	lbC010A6E
-
-	MOVE.W	#1,lbW010ACC
+;	MOVE.W	#1,lbW010ACC
 ;	MOVE.L	#0,lbL010BCA
 ;	BRA.W	lbC010A82
 
-	clr.l	lbL010BCA
-	bra.b	lbC010A82
-
-lbC010A6E	BSR.W	lbC010B00
-	MOVEQ	#0,D2
-	MOVE.W	lbB010BC0(pc),D2
-	ASL.L	#8,D2
-	MOVE.L	D2,lbL010BCA
-lbC010A82	MOVEQ	#0,D0
-	MOVEQ	#0,D1
-	MOVE.W	lbW010BD2(pc),D0
-	MOVE.W	lbW010F70(pc),D1
-	CMPI.W	#$7C,D1
+;lbC010A6E	BSR.W	lbC010B00
+;	MOVEQ	#0,D2
+;	MOVE.W	lbB010BC0,D2
+;	ASL.L	#8,D2
+;	MOVE.L	D2,lbL010BCA
+;lbC010A82	MOVEQ	#0,D0
+;	MOVEQ	#0,D1
+;	MOVE.W	lbW010BD2,D0
+;	MOVE.W	lbW010F70,D1
+;	CMPI.W	#$7C,D1
 ;	BHI.W	lbC010AB0
-
-	bhi.b	lbC010AB0
-
-	MOVE.W	#1,lbW010ACE
+;	MOVE.W	#1,lbW010ACE
 ;	MOVE.L	#0,lbL010BCE
 ;	BRA.W	lbC010AC4
 
-	clr.l	lbL010BCE
-	bra.b	lbC010AC4
+;lbC010AB0	BSR.W	lbC010B00
+;	MOVEQ	#0,D2
+;	MOVE.W	lbB010BC0,D2
+;	ASL.L	#8,D2
+;	MOVE.L	D2,lbL010BCE
+;lbC010AC4	BRA.W	lbC010BD4
 
-lbC010AB0	BSR.W	lbC010B00
-	MOVEQ	#0,D2
-	MOVE.W	lbB010BC0(pc),D2
-	ASL.L	#8,D2
-	MOVE.L	D2,lbL010BCE
-lbC010AC4	BRA.W	lbC010BD4
+;lbW010AC8	dc.w	1
+;lbW010ACA	dc.w	1
+;lbW010ACC	dc.w	1
+;lbW010ACE	dc.w	1
+;lbL010AD0	dc.l	0
+;lbL010AD4	dc.l	0
+;lbL010AD8	dc.l	0
+;lbL010ADC	dc.l	0
+;lbL010AE0	dc.l	0
+;lbL010AE4	dc.l	0
+;lbL010AE8	dc.l	0
+;lbL010AEC	dc.l	0
+;lbL010AF0	dc.l	0
+;lbL010AF4	dc.l	0
+;lbL010AF8	dc.l	0
+;lbL010AFC	dc.l	0
+
+;lbC010B00	TST.W	D0
+;	BEQ.W	lbC0104E6
+;	TST.W	D1
+;	BEQ.W	lbC0104E6
+;	ASL.L	#8,D1
+;	DIVU.W	D0,D1
+;	MOVE.L	#$100,D0
+;	DIVU.W	D1,D0
+;	MOVE.B	D0,lbB010BC0
+;	SWAP	D0
+;	ASL.L	#8,D0
+;	ANDI.L	#$FFFFFF,D0
+;	DIVU.W	D1,D0
+;	MOVE.B	D0,lbB010BC1
+;	RTS
+
+;lbC010B32	LEA	Tables,A0
+;	MOVE.W	#$80,D0
+;	MOVE.W	#$17F,D7
+;lbC010B40	MOVE.B	D0,(A0)+
+;	DBRA	D7,lbC010B40
+;	MOVE.W	#$FF,D7
+;lbC010B4A	MOVE.B	D0,(A0)+
+;	ADDI.B	#1,D0
+;	DBRA	D7,lbC010B4A
+;	SUBI.B	#1,D0
+;	MOVE.W	#$17F,D7
+;lbC010B5C	MOVE.B	D0,(A0)+
+;	DBRA	D7,lbC010B5C
+;	LEA	lbL011FB6,A0
+;	MOVEQ	#0,D0
+;	MOVEQ	#$3F,D7
+;lbC010B6C	MOVE.W	#$FF,D6
+;	MOVE.W	#$FF80,D5
+;	MOVE.W	#$80,D3
+;lbC010B78	MOVE.L	D5,D4
+;	MULS.W	D0,D4
+;	DIVS.W	#$3F,D4
+;	ADDI.B	#$80,D4
+;	MOVE.B	D4,0(A0,D3.W)
+;	CMPI.W	#$3F,D7
+;	BEQ.W	lbC010BA4
+;	TST.W	D7
+;	BEQ.W	lbC010BA4
+;	CMPI.W	#$80,D3
+;	BCS.W	lbC010BA4
+;	SUBI.B	#1,0(A0,D3.W)
+;lbC010BA4	ADDQ.W	#1,D3
+;	ANDI.W	#$FF,D3
+;	ADDQ.W	#1,D5
+;	DBRA	D6,lbC010B78
+;	LEA	$100(A0),A0
+;	ADDQ.W	#1,D0
+;	DBRA	D7,lbC010B6C
+;	RTS
+
+;lbL010BBC	dc.l	0
+;lbB010BC0	dc.b	0
+;lbB010BC1	dc.b	0
+;lbL010BC2	dc.l	0
+;lbL010BC6	dc.l	0
+;lbL010BCA	dc.l	0
+;lbL010BCE	dc.l	0
+;lbW010BD2	dc.w	$CB
+
+;lbC010BD4	MOVEQ	#0,D0
+;	MOVEQ	#0,D1
+;	MOVEQ	#0,D2
+;	MOVEQ	#0,D3
+;	MOVEQ	#0,D4
+;	MOVEQ	#0,D5
+;	MOVE.L	lbL010BC6,lbL010D06
+;	MOVE.L	lbL010BCA,lbL010D10
+;	MOVE.L	lbL010BCE,lbL010D1A
+;	MOVE.W	lbL010EF4,D0
+;	TST.W	lbW010AC8
+;	BEQ.W	lbC010C10
+;	MOVEQ	#0,D0
+;lbC010C10	ASL.L	#8,D0
+;	LEA	lbL011FB6,A5
+;	LEA	0(A5,D0.W),A5
+;	SUBA.L	#lbL010CC4,A5
+;	MOVE.W	A5,lbL010CC4
+;	MOVE.W	lbW010F24,D0
+;	TST.W	lbW010ACA
+;	BEQ.W	lbC010C3A
+;	MOVEQ	#0,D0
+;lbC010C3A	ASL.L	#8,D0
+;	LEA	lbL011FB6,A5
+;	LEA	0(A5,D0.W),A5
+;	SUBA.L	#lbL010CD2,A5
+;	MOVE.W	A5,lbL010CD2
+;	MOVE.W	lbW010F54,D0
+;	TST.W	lbW010ACC
+;	BEQ.W	lbC010C64
+;	MOVEQ	#0,D0
+;lbC010C64	ASL.L	#8,D0
+;	LEA	lbL011FB6,A5
+;	LEA	0(A5,D0.W),A5
+;	SUBA.L	#lbL010CE2,A5
+;	MOVE.W	A5,lbL010CE2
+;	MOVE.W	lbW010F84,D0
+;	TST.W	lbW010ACE
+;	BEQ.W	lbC010C8E
+;	MOVEQ	#0,D0
+;lbC010C8E	ASL.L	#8,D0
+;	LEA	lbL011FB6,A5
+;	LEA	0(A5,D0.W),A5
+;	SUBA.L	#lbL010CF0,A5
+;	MOVE.W	A5,lbL010CF0
+;	MOVE.L	SP,lbL010BBC
+;	MOVEA.L	lbL010BC2,SP
+;	LEA	Tables,A5
+;	MOVE.W	#$15D,D7
+;	MOVEQ	#0,D6
+;lbC010CBE	MOVE.B	0(A0,D2.W),D6		; 14
+;	LEA	lbL015EB6(PC),A6		;  8
+;lbL010CC4	EQU	*-2
+;	MOVEQ	#0,D0				;  4
+;	MOVE.B	0(A6,D6.W),D0			; 14
+;	MOVE.B	0(A1,D3.W),D6			; 14
+;	LEA	lbL015EB6(PC),A6		;  8
+;lbL010CD2	EQU	*-2
+;	MOVEQ	#0,D1				;  4
+;	MOVE.B	0(A6,D6.W),D1			; 14
+;	ADD.W	D0,D1				;  4
+;	MOVE.B	0(A2,D4.W),D6			; 14
+;	LEA	lbL015EB6(PC),A6		;  8
+;lbL010CE2	EQU	*-2
+;	MOVE.B	0(A6,D6.W),D0			; 14
+;	ADD.W	D0,D1				;  4
+;	MOVE.B	0(A3,D5.W),D6			; 14
+;	LEA	lbL015EB6(PC),A6		;  8
+;lbL010CF0	EQU	*-2
+;	MOVE.B	0(A6,D6.W),D0			; 14
+;	ADD.W	D0,D1				;  4
+;	MOVE.B	0(A5,D1.W),(A4)+		; 18
+;	SWAP	D2				;  4
+;	ADD.L	SP,D2				;  6
+;	SWAP	D2				;  4
+;	SWAP	D3				;  4
+;	ADDI.L	#0,D3				; 14
+;lbL010D06	EQU	*-4
+;	SWAP	D3				;  4
+;	SWAP	D4				;  4
+;	ADDI.L	#0,D4				; 14
+;lbL010D10	EQU	*-4
+;	SWAP	D4				;  4
+;	SWAP	D5				;  4
+;	ADDI.L	#0,D5				; 14
+;lbL010D1A	EQU	*-4
+;	SWAP	D5				;  4
+;	DBRA	D7,lbC010CBE			; 10
+
+						; total 272 cycles
+;	MOVEA.L	lbL010BBC,SP
+;	LEA	0(A0,D2.W),A0
+;	LEA	0(A1,D3.W),A1
+;	LEA	0(A2,D4.W),A2
+;	LEA	0(A3,D5.W),A3
+;	MOVE.L	A0,lbL010AD0
+;	MOVE.L	A1,lbL010AD4
+;	MOVE.L	A2,lbL010AD8
+;	MOVE.L	A3,lbL010ADC
+;	CMPA.L	lbL010AE0,A0
+;	BCS.W	lbC010D7E
+;	TST.L	lbL010AF0
+;	BEQ.W	lbC010D76
+;	MOVE.L	lbL010AF0,D0
+;	SUB.L	D0,lbL010AD0
+;	BRA.W	lbC010D7E
+
+;lbC010D76	MOVE.W	#1,lbW010AC8
+;lbC010D7E	CMPA.L	lbL010AE4,A1
+;	BCS.W	lbC010DAA
+;	TST.L	lbL010AF4
+;	BEQ.W	lbC010DA2
+;	MOVE.L	lbL010AF4,D0
+;	SUB.L	D0,lbL010AD4
+;	BRA.W	lbC010DAA
+
+;lbC010DA2	MOVE.W	#1,lbW010ACA
+;lbC010DAA	CMPA.L	lbL010AE8,A2
+;	BCS.W	lbC010DD6
+;	TST.L	lbL010AF8
+;	BEQ.W	lbC010DCE
+;	MOVE.L	lbL010AF8,D0
+;	SUB.L	D0,lbL010AD8
+;	BRA.W	lbC010DD6
+
+;lbC010DCE	MOVE.W	#1,lbW010ACC
+;lbC010DD6	CMPA.L	lbL010AEC,A3
+;	BCS.W	lbC010E02
+;	TST.L	lbL010AFC
+;	BEQ.W	lbC010DFA
+;	MOVE.L	lbL010AFC,D0
+;	SUB.L	D0,lbL010ADC
+;	BRA.W	lbC010E02
+
+;lbC010DFA	MOVE.W	#1,lbW010ACE
+;lbC010E02	LEA	$DFF000,A6
+;	MOVE.W	#$AF,$D4(A6)
+;	MOVE.W	lbW010BD2,$D6(A6)
+;	MOVE.W	#$40,$D8(A6)
+;	MOVE.W	#$8008,$96(A6)
+;	RTS
 
 lbW010AC8	dc.w	1
 lbW010ACA	dc.w	1
@@ -3085,23 +3339,17 @@ lbL010AF4	dc.l	0
 lbL010AF8	dc.l	0
 lbL010AFC	dc.l	0
 
-lbC010B00	TST.W	D0
-	BEQ.W	lbC0104E6
-	TST.W	D1
-	BEQ.W	lbC0104E6
-	ASL.L	#8,D1
-	DIVU.W	D0,D1
-	MOVE.L	#$100,D0
-	DIVU.W	D1,D0
-	MOVE.B	D0,lbB010BC0
-	SWAP	D0
-	ASL.L	#8,D0
-	ANDI.L	#$FFFFFF,D0
-	DIVU.W	D1,D0
-	MOVE.B	D0,lbB010BC1
-	RTS
+Period1
+	dc.w	0
+Period2
+	dc.w	0
+Period3
+	dc.w	0
+Period4
+	dc.w	0
 
-lbC010B32	LEA	lbL011BB4,A0
+lbC010B32
+;	LEA	Tables,A0
 	MOVE.W	#$80,D0
 	MOVE.W	#$17F,D7
 lbC010B40	MOVE.B	D0,(A0)+
@@ -3120,7 +3368,7 @@ lbC010B4A	MOVE.B	D0,(A0)+
 	MOVE.W	#$17F,D7
 lbC010B5C	MOVE.B	D0,(A0)+
 	DBRA	D7,lbC010B5C
-	LEA	lbL011FB6,A0
+	LEA	lbL011FB6(pc),A0
 	MOVEQ	#0,D0
 	MOVEQ	#$3F,D7
 lbC010B6C	MOVE.W	#$FF,D6
@@ -3158,290 +3406,7 @@ lbC010BA4	ADDQ.W	#1,D3
 	RTS
 
 ;lbL010BBC	dc.l	0
-lbB010BC0	dc.b	0
-lbB010BC1	dc.b	0
-lbL010BC2	dc.l	0
-lbL010BC6	dc.l	0
-lbL010BCA	dc.l	0
-lbL010BCE	dc.l	0
-lbW010BD2	dc.w	$CB
 
-lbC010BD4	MOVEQ	#0,D0
-	MOVEQ	#0,D1
-	MOVEQ	#0,D2
-	MOVEQ	#0,D3
-	MOVEQ	#0,D4
-	MOVEQ	#0,D5
-;	MOVE.L	lbL010BC6(pc),lbL010D06
-;	MOVE.L	lbL010BCA(pc),lbL010D10
-;	MOVE.L	lbL010BCE(pc),lbL010D1A
-	MOVE.W	lbL010EF4(pc),D0
-	TST.W	lbW010AC8
-;	BEQ.W	lbC010C10
-
-	beq.b	lbC010C10
-
-	MOVEQ	#0,D0
-lbC010C10
-;	ASL.L	#8,D0
-;	LEA	lbL011FB6,A5
-;	LEA	0(A5,D0.W),A5
-;	SUBA.L	#lbL010CC4,A5
-;	MOVE.W	A5,lbL010CC4
-
-	asl.w	#8,D0
-	lea	Base_A5(PC),A5
-	move.w	D0,(A5)+
-
-	MOVE.W	lbW010F24(pc),D0
-	TST.W	lbW010ACA
-;	BEQ.W	lbC010C3A
-
-	beq.b	lbC010C3A
-
-	MOVEQ	#0,D0
-lbC010C3A
-;	ASL.L	#8,D0
-;	LEA	lbL011FB6,A5
-;	LEA	0(A5,D0.W),A5
-;	SUBA.L	#lbL010CD2,A5
-;	MOVE.W	A5,lbL010CD2
-
-	asl.w	#8,D0
-	move.w	D0,(A5)+
-
-	MOVE.W	lbW010F54(pc),D0
-	TST.W	lbW010ACC
-;	BEQ.W	lbC010C64
-
-	beq.b	lbC010C64
-
-	MOVEQ	#0,D0
-lbC010C64
-;	ASL.L	#8,D0
-;	LEA	lbL011FB6,A5
-;	LEA	0(A5,D0.W),A5
-;	SUBA.L	#lbL010CE2,A5
-;	MOVE.W	A5,lbL010CE2
-
-	asl.w	#8,D0
-	move.w	D0,(A5)+
-
-	MOVE.W	lbW010F84(pc),D0
-	TST.W	lbW010ACE
-;	BEQ.W	lbC010C8E
-
-	beq.b	lbC010C8E
-
-	MOVEQ	#0,D0
-lbC010C8E
-;	ASL.L	#8,D0
-;	LEA	lbL011FB6,A5
-;	LEA	0(A5,D0.W),A5
-;	SUBA.L	#lbL010CF0,A5
-;	MOVE.W	A5,lbL010CF0
-;	MOVE.L	SP,lbL010BBC
-;	MOVEA.L	lbL010BC2(pc),SP
-;	LEA	lbL011BB4,A5
-;	MOVE.W	#$15D,D7
-;	MOVEQ	#0,D6
-
-	asl.w	#8,D0
-	move.w	D0,(A5)+
-	move.l	lbL010BC2(PC),D0
-	swap	D0
-	move.l 	D0,(A5)+
-	move.l	lbL010BC6(PC),D0
-	swap	D0
-	move.l	D0,(A5)+
-	move.l	lbL010BCA(PC),D0
-	swap	D0
-	move.l	D0,(A5)+
-	move.l 	lbL010BCE(PC),D0
-	swap	D0
-	move.l	D0,(A5)+
-	moveq	#0,D0
-	lea	lbL011FB6,A6
-	move.w	LoopCounter(PC),D7
-
-lbC010CBE
-
-	lea	-24(A5),A5
-	move.w	(A5)+,D6
-
-	MOVE.B	0(A0,D2.W),D6
-;	LEA	lbL015EB6(PC),A6
-;lbL010CC4	EQU	*-2
-;	MOVEQ	#0,D0
-	MOVE.B	0(A6,D6.W),D0
-
-	move.l	D0,D1
-	move.w	(A5)+,D6
-
-	MOVE.B	0(A1,D3.W),D6
-;	LEA	lbL015EB6(PC),A6
-;lbL010CD2	EQU	*-2
-;	MOVEQ	#0,D1
-;	MOVE.B	0(A6,D6.W),D1
-
-	move.b	0(A6,D6.W),D0
-
-	ADD.W	D0,D1
-
-	move.w	(A5)+,D6
-
-	MOVE.B	0(A2,D4.W),D6
-;	LEA	lbL015EB6(PC),A6
-;lbL010CE2	EQU	*-2
-	MOVE.B	0(A6,D6.W),D0
-	ADD.W	D0,D1
-
-	move.w	(A5)+,D6
-
-	MOVE.B	0(A3,D5.W),D6
-;	LEA	lbL015EB6(PC),A6
-;lbL010CF0	EQU	*-2
-	MOVE.B	0(A6,D6.W),D0
-	ADD.W	D0,D1
-;	MOVE.B	0(A5,D1.W),(A4)+
-;	SWAP	D2
-;	ADD.L	SP,D2
-
-	move.b	lbL011BB4(PC,D1.W),(A4)+
-	moveq	#0,D6
-	add.l	(A5)+,D2
-	addx.w	D6,D2
-
-;	SWAP	D2
-;	SWAP	D3
-;	ADDI.L	#0,D3
-;lbL010D06	EQU	*-4
-
-	add.l	(A5)+,D3
-	addx.w	D6,D3
-
-;	SWAP	D3
-;	SWAP	D4
-;	ADDI.L	#0,D4
-;lbL010D10	EQU	*-4
-
-	add.l	(A5)+,D4
-	addx.w	D6,D4
-
-;	SWAP	D4
-;	SWAP	D5
-;	ADDI.L	#0,D5
-;lbL010D1A	EQU	*-4
-;	SWAP	D5
-
-	add.l	(A5)+,D5
-	addx.w	D6,D5
-
-	DBRA	D7,lbC010CBE
-;	MOVEA.L	lbL010BBC(pc),SP
-;	LEA	0(A0,D2.W),A0
-;	LEA	0(A1,D3.W),A1
-;	LEA	0(A2,D4.W),A2
-;	LEA	0(A3,D5.W),A3
-
-	bra.w	SkipBuffer
-lbL011BB4
-	ds.b	1026
-Base_A5
-	ds.b	24
-
-SkipBuffer
-	add.w	D2,A0
-	add.w	D3,A1
-	add.w	D4,A2
-	add.w	D5,A3
-
-	MOVE.L	A0,lbL010AD0
-	MOVE.L	A1,lbL010AD4
-	MOVE.L	A2,lbL010AD8
-	MOVE.L	A3,lbL010ADC
-	CMPA.L	lbL010AE0(pc),A0
-;	BCS.W	lbC010D7E
-
-	bcs.b	lbC010D7E
-
-;	TST.L	lbL010AF0
-;	BEQ.W	lbC010D76
-
-
-	MOVE.L	lbL010AF0(pc),D0
-
-	beq.b	lbC010D76
-
-	SUB.L	D0,lbL010AD0
-;	BRA.W	lbC010D7E
-
-	bra.b	lbC010D7E
-
-lbC010D76	MOVE.W	#1,lbW010AC8
-lbC010D7E	CMPA.L	lbL010AE4(pc),A1
-;	BCS.W	lbC010DAA
-
-	bcs.b	lbC010DAA
-
-;	TST.L	lbL010AF4
-;	BEQ.W	lbC010DA2
-
-
-	MOVE.L	lbL010AF4(pc),D0
-
-	beq.b	lbC010DA2
-
-	SUB.L	D0,lbL010AD4
-;	BRA.W	lbC010DAA
-
-	bra.b	lbC010DAA
-
-lbC010DA2	MOVE.W	#1,lbW010ACA
-lbC010DAA	CMPA.L	lbL010AE8(pc),A2
-;	BCS.W	lbC010DD6
-
-	bcs.b	lbC010DD6
-
-;	TST.L	lbL010AF8
-;	BEQ.W	lbC010DCE
-
-	MOVE.L	lbL010AF8(pc),D0
-
-	beq.b	lbC010DCE
-
-	SUB.L	D0,lbL010AD8
-;	BRA.W	lbC010DD6
-
-	bra.b	lbC010DD6
-
-
-lbC010DCE	MOVE.W	#1,lbW010ACC
-lbC010DD6	CMPA.L	lbL010AEC(pc),A3
-;	BCS.W	lbC010E02
-
-	bcs.b	lbC010E02
-
-;	TST.L	lbL010AFC
-;	BEQ.W	lbC010DFA
-
-	MOVE.L	lbL010AFC(pc),D0
-
-	beq.b	lbC010DFA
-
-	SUB.L	D0,lbL010ADC
-;	BRA.W	lbC010E02
-
-	bra.b	lbC010E02
-
-lbC010DFA	MOVE.W	#1,lbW010ACE
-lbC010E02
-;	LEA	$DFF000,A6
-;	MOVE.W	#$AF,$D4(A6)
-;	MOVE.W	lbW010BD2(pc),$D6(A6)
-;	MOVE.W	#$40,$D8(A6)
-;	MOVE.W	#$8008,$96(A6)
-	RTS
 
 lbW010E2C	dc.w	0
 lbW010E2E	dc.w	0
@@ -4093,16 +4058,284 @@ lbL0113C2	dc.l	$C940BE0
 	dc.l	$96008E
 	dc.w	$86
 
-	Section	MixBuffer,BSS
+Return
+	add.w	D3,A1
+	add.l	D7,D4
+	addx.w	D5,D4
+	add.w	D4,A2
+	clr.w	D4
+	add.l	(SP)+,D5		; restore stack
+	addx.w	D4,D5
+	add.w	D5,A3
 
-lbL011FB6	ds.b	16128
+;	add.w	D2,A0
+;	add.w	D3,A1
+;	add.w	D4,A2
+;	add.w	D5,A3
+	moveq	#1,D6
+	lea	lbL01097A(PC),A6
+	move.l	A0,lbL010AD0-lbL01097A(A6)
+	move.l	A1,lbL010AD4-lbL01097A(A6)
+	move.l	A2,lbL010AD8-lbL01097A(A6)
+	move.l	A3,lbL010ADC-lbL01097A(A6)
+	cmp.l	lbL010AE0(PC),A0
+	bcs.b	lbC010D7E
+	move.l	lbL010AF0(PC),D0
+	beq.b	lbC010D76
+	sub.l	D0,lbL010AD0-lbL01097A(A6)
+	bra.b	lbC010D7E
+lbC010D76
+	move.w	D6,lbW010AC8-lbL01097A(A6)
+lbC010D7E
+	cmp.l	lbL010AE4(PC),A1
+	bcs.b	lbC010DAA
+	move.l	lbL010AF4(PC),D0
+	beq.b	lbC010DA2
+	sub.l	D0,lbL010AD4-lbL01097A(A6)
+	bra.b	lbC010DAA
+lbC010DA2
+	move.w	D6,lbW010ACA-lbL01097A(A6)
+lbC010DAA
+	cmp.l	lbL010AE8(PC),A2
+	bcs.b	lbC010DD6
+	move.l	lbL010AF8(PC),D0
+	beq.b	lbC010DCE
+	sub.l	D0,lbL010AD8-lbL01097A(A6)
+	bra.b	lbC010DD6
+lbC010DCE
+	move.w	D6,lbW010ACC-lbL01097A(A6)
+lbC010DD6
+	cmp.l	lbL010AEC(PC),A3
+	bcs.b	lbC010E02
+	move.l	lbL010AFC(PC),D0
+	beq.b	lbC010DFA
+	sub.l	D0,lbL010ADC-lbL01097A(A6)
+	rts
+lbC010DFA
+	move.w	D6,lbW010ACE-lbL01097A(A6)
+lbC010E02
+	rts
 
-lbL015EB6	ds.b	256
+lbB010BC1
+	dc.b	0
+ExtraByte1
+	dc.b	0
+ExtraByte2
+	dc.b	0
+lbB010BC0
+	dc.b	0
+lbL010BC2	dc.l	0
+lbL010BC6	dc.l	0
+lbL010BCA	dc.l	0
+lbL010BCE	dc.l	0
+lbW010BD2	dc.w	$CB
 
-EmptyBuffer	ds.b	1024
+lbC010B00
+	asl.l	#8,D1
+	divu.w	D0,D1
+	move.l	D6,D0
+	divu.w	D1,D0
+	move.b	D0,lbB010BC0-lbL01097A(A6)
+	clr.w	D0
+	lsr.l	#8,D0
+	divu.w	D1,D0
+	move.b	D0,lbB010BC1-lbL01097A(A6)
+	rts
 
-	Section	PlayBuffer,BSS_C
+; Mixer - new mixing routine
+lbC010982
+	movem.l	lbL010AD0(PC),A0-A3
+	lea	lbL01097A(PC),A6
+	move.l	(A6),D0
+	move.l	lbL01097E(PC),A4
+	move.l	A4,(A6)
+	move.l	D0,lbL01097E-lbL01097A(A6)
+	moveq	#64,D6
+	lsl.w	#2,D6			; $100
+	moveq	#0,D1
+	moveq	#0,D5
+	moveq	#1,D7
+	move.w	lbW010BD2(PC),D2
+	move.w	lbL010EE0(PC),D1
+	bne.b	lbC0109EA
+	move.w	D7,lbW010AC8-lbL01097A(A6)
+	move.l	D5,lbL010BC2-lbL01097A(A6)
+	bra.b	lbC0109FE
+lbC0109EA
+	cmp.w	Period1(PC),D1
+	beq.b	lbC0109FE			; skip 3*divu.w
+	move.w	D1,Period1-lbL01097A(A6)
+	move.w	D2,D0
+	bsr.w	lbC010B00
+	move.l	lbB010BC1(PC),lbL010BC2-lbL01097A(A6)
+lbC0109FE
+	moveq	#0,D1
+	move.w	lbW010F10(PC),D1
+	bne.b	lbC010A2C
+	move.w	D7,lbW010ACA-lbL01097A(A6)
+	move.l	D5,lbL010BC6-lbL01097A(A6)
+	bra.b	lbC010A40
+lbC010A2C
+	cmp.w	Period2(PC),D1
+	beq.b	lbC010A40
+	move.w	D1,Period2-lbL01097A(A6)
+	move.w	D2,D0
+	bsr.w	lbC010B00
+	move.l	lbB010BC1(PC),lbL010BC6-lbL01097A(A6)
+lbC010A40
+	moveq	#0,D1
+	move.w	lbW010F40(PC),D1
+	bne.b	lbC010A6E
+	move.w	D7,lbW010ACC-lbL01097A(A6)
+	move.l	D5,lbL010BCA-lbL01097A(A6)
+	bra.b	lbC010A82
+lbC010A6E
+	cmp.w	Period3(PC),D1
+	beq.b	lbC010A82
+	move.w	D1,Period3-lbL01097A(A6)
+	move.w	D2,D0
+	bsr.w	lbC010B00
+	move.l	lbB010BC1(PC),lbL010BCA-lbL01097A(A6)
+lbC010A82
+	moveq	#0,D1
+	move.w	lbW010F70(PC),D1
+	bne.b	lbC010AB0
+	move.w	D7,lbW010ACE-lbL01097A(A6)
+	move.l	D5,lbL010BCE-lbL01097A(A6)
+	bra.b	lbC010AC4
+lbC010AB0
+	cmp.w	Period4(PC),D1
+	beq.b	lbC010AC4
+	move.w	D1,Period4-lbL01097A(A6)
+	move.w	D2,D0
+	bsr.w	lbC010B00
+	move.l	lbB010BC1(PC),lbL010BCE-lbL01097A(A6)
+lbC010AC4
+	moveq	#0,D3
+	moveq	#0,D4
+	move.w	lbL010EF4(PC),D6
+	tst.w	lbW010AC8-lbL01097A(A6)
+	beq.b	lbC010C10
+	moveq	#0,D6
+lbC010C10
+	addq.w	#4,D6
+	asl.w	#8,D6
+	swap	D6
+	move.w	lbW010F24(PC),D6
+	tst.w	lbW010ACA-lbL01097A(A6)
+	beq.b	lbC010C3A
+	clr.w	D6
+lbC010C3A
+	addq.w	#4,D6
+	asl.w	#8,D6
+	move.w	lbW010F54(PC),D0
+	tst.w	lbW010ACC-lbL01097A(A6)
+	beq.b	lbC010C64
+	moveq	#0,D0
+lbC010C64
+	addq.w	#4,D0
+	asl.w	#8,D0
+	swap	D0
+	move.w	lbW010F84(PC),D0
+	tst.w	lbW010ACE-lbL01097A(A6)
+	beq.b	lbC010C8E
+	clr.w	D0
+lbC010C8E
+	addq.w	#4,D0
+	asl.w	#8,D0
+	moveq	#0,D2
+	move.l	lbL010BC2(PC),A5
+	move.l	lbL010BC6(PC),A6
+	move.l	lbL010BCA(PC),D7
+	move.l	lbL010BCE(PC),-(SP)
+	move.w	LoopCounter(PC),D1
+	bra.b	Top
+Loop					; 68000
+	add.w	D3,A1			; 4
+	clr.w	D3			; 4
+	add.l	D7,D4			; 6
+	addx.w	D5,D4			; 4
+	add.w	D4,A2			; 4
+	clr.w	D4			; 4
+	add.l	(SP),D5			; 14
+	addx.w	D4,D5			; 4
+	add.w	D5,A3			; 4
+Top
+	move.b	(A1),D6			; 8
+	move.b	Tables(PC,D6.W),D2	; 14
+	swap	D6			; 4
+	move.b	(A0),D6			; 8
+	move.b	Tables(PC,D6.W),D5	; 14
+	add.w	D5,D2			; 4
+	move.b	(A3),D0			; 8
+	move.b	Tables(PC,D0.W),D5	; 14
+	add.w	D5,D2			; 4
+	swap	D0			; 4
+	move.b	(A2),D0			; 8
+	move.b	Tables(PC,D0.W),D5	; 14
+	add.w	D5,D2			; 4
+	move.b	Tables(PC,D2.W),(A4)+	; 18
+	clr.w	D5			; 4
+	clr.w	D2			; 4
+	add.l	A5,D2			; 6
+	addx.w	D5,D2			; 4
+	add.w	D2,A0			; 4
+	add.l	A6,D3			; 6
+	addx.w	D5,D3			; 4
+	add.w	D3,A1			; 4
+	clr.w	D3			; 4
+	add.l	D7,D4			; 6
+	addx.w	D5,D4			; 4
+	add.w	D4,A2			; 4
+	clr.w	D4			; 4
+	add.l	(SP),D5			; 14
+	addx.w	D4,D5			; 4
+	add.w	D5,A3			; 4
+	move.b	(A0),D6			; 8
+	move.b	Tables(PC,D6.W),D2	; 14
+	swap	D6			; 4
+	move.b	(A1),D6			; 8
+	move.b	Tables(PC,D6.W),D5	; 14
+	add.w	D5,D2			; 4
+	move.b	(A2),D0			; 8
+	move.b	Tables(PC,D0.W),D5	; 14
+	add.w	D5,D2			; 4
+	swap	D0			; 4
+	move.b	(A3),D0			; 8
+	move.b	Tables(PC,D0.W),D5	; 14
+	add.w	D5,D2			; 4
+	move.b	Tables(PC,D2.W),(A4)+	; 18
+	clr.w	D5			; 4
+	clr.w	D2			; 4
+	add.l	A5,D2			; 6
+	addx.w	D5,D2			; 4
+	add.w	D2,A0			; 4
+	add.l	A6,D3			; 6
+	addx.w	D5,D3			; 4
+	dbf	D1,Loop			; 10
+					; total 422 cycles (61 commands)
+					; total 211 cycles per mixed byte
+	bra.w	Return
 
-lbL010E24	ds.b	8
-lbL010FB4	ds.b	512+48			; extended buffer
-lbL0111B4	ds.b	512+48			; extended buffer
+* OS friendly version -> 211 cycles per byte is 61 cycles fastest
+* per byte than original (272 cycles) Rhino mixing routine :-)
+
+	Section	MixBuffy,Code_BSS
+
+Tables
+	ds.b	1024
+lbL011FB6
+	ds.b	16128
+;lbL015EB6
+	ds.b	256
+
+	Section	PlayBuffy,BSS_C
+
+lbL010E24
+	ds.b	8/2		; 4 bytes
+lbL010FB4
+	ds.b	592		; play buffy 1 (71591/121)
+lbL0111B4
+	ds.b	592		; play buffy 2 (71591/121)
+
+;	total	1188 bytes of chip RAM
