@@ -13,11 +13,11 @@
 
 	EPPHEADER Tags
 
-	dc.b	'$VER: Leggless Music Editor player module V2.0 (29 Sep 2003)',0
+	dc.b	'$VER: Leggless Music Editor player module V2.1 (5 Dec 2008)',0
 	even
 
 Tags
-	dc.l	DTP_PlayerVersion,2<<16!0
+	dc.l	DTP_PlayerVersion,2<<16!1
 	dc.l	EP_PlayerVersion,11
 	dc.l	DTP_PlayerName,PlayerName
 	dc.l	DTP_Creator,Creator
@@ -201,6 +201,7 @@ hop2
 	move.l	D0,A3
 
 	move.l	(A2),D6
+	moveq	#0,D4
 	move.w	4(A2),D4
 	lsl.l	#1,D4
 
@@ -268,6 +269,7 @@ hop
 	bge.b	Retry
 
 	move.l	(A2),D7
+	moveq	#0,D5
 	move.w	4(A2),D5
 	lsl.l	#1,D5
 	add.l	D5,D6

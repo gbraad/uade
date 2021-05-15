@@ -12,11 +12,11 @@
 
 	PLAYERHEADER Tags
 
-	dc.b	'$VER: Leggless Music Editor player module V1.1 (29 Sep 2003)',0
+	dc.b	'$VER: Leggless Music Editor player module V1.2 (5 Dec 2008)',0
 	even
 
 Tags
-	dc.l	DTP_PlayerVersion,2
+	dc.l	DTP_PlayerVersion,3
 	dc.l	EP_PlayerVersion,9
 	dc.l	DTP_RequestDTVersion,DELIVERSION
 	dc.l	DTP_PlayerName,PlayerName
@@ -214,6 +214,7 @@ hop2
 	move.l	D0,A3
 
 	move.l	(A2),D6
+	moveq	#0,D4
 	move.w	4(A2),D4
 	lsl.l	#1,D4
 
@@ -282,6 +283,7 @@ hop
 	bge.b	Retry
 
 	move.l	(A2),D7
+	moveq	#0,D5
 	move.w	4(A2),D5
 	lsl.l	#1,D5
 	add.l	D5,D6
@@ -308,13 +310,11 @@ Retry
 	add.l	D1,D6
 	move.l	D6,CalcSize(A4)
 
-; part removed due stupid/unknown Delitracker initialization problem
-
-;	cmp.l	LoadSize(A4),D6
-;	ble.b	SizeOK
-;	moveq	#EPR_ModuleTooShort,D0		; error message
-;	rts
-;SizeOK	
+	cmp.l	LoadSize(A4),D6
+	ble.b	SizeOK
+	moveq	#EPR_ModuleTooShort,D0		; error message
+	rts
+SizeOK	
 	lea	4(A3),A3
 	move.l	A3,SpecialInfo(A4)
 
