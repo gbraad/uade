@@ -1,10 +1,11 @@
 Short:    EaglePlayer "PumaTracker" external replayer
 Author:   Wanted Team
-Uploader: wt@jho.pol.pl (Don Adan/Wanted Team)
-Version:  1
+Uploader: Don Adan <DonAdan@wp.pl>
+Version:  2
 Type:     mus/play
+Replaces: mus/play/EP_PumaTracker.lha
 
-This is a different version of the external "PumaTracker" replay
+This is a new version of a different external "PumaTracker" replay
 for EaglePlayer 1.54/2.00+. It's a player for all known "PumaTracker"
 (Amiga and Atari ST) modules.
 
@@ -25,6 +26,11 @@ Features:
 - PatternScroll
 - as a bonus, an EagleRipper for PumaTracker modules is included
 - special Amplifier version (EP 2.00+ only)
+
+Version 2
+
+- fixed player recognition routine for "Snow Bros" songs
+- fixed ripper recognition routine for "Snow Bros" songs
 
 Notes:
 

@@ -9,15 +9,15 @@
 			
 	RIPPERHEADER	PumaTags
 
-	dc.b	"PumaTracker EagleRipper V1.0",10
-	dc.b	"done by Wanted Team (30 Dec 2001)",0
+	dc.b	"PumaTracker EagleRipper V1.1",10
+	dc.b	"done by Wanted Team (12 Apr 2006)",0
 	even
 
 PumaTags
 	dc.l	RPT_Formatname,Formatname
 	dc.l	RPT_Ripp1,PumaRipp1
 	dc.l	RPT_RequestRipper,1
-	dc.l	RPT_Version,1<<16!0
+	dc.l	RPT_Version,1<<16!1
 	dc.l	RPT_Creator,Creator
 	dc.l	RPT_Playername,Playername
 	dc.l	RPT_GetModuleName,GetModuleName
@@ -45,9 +45,20 @@ PumaRipp1
 	beq.b	check
 	rts
 check
-	cmp.l	#$20,4(A1)
-	bne.b	error
-	cmp.l	#'patt',8(A1)
+	move.l	D3,-(SP)
+	moveq	#32,D2
+	move.l	A1,A2
+	move.l	A1,D3
+NextPos
+	tst.b	7(A2)
+	beq.b	error
+	sub.b	7(A2),D2
+	beq.b	Check
+	bmi.b	error
+	addq.l	#4,A2
+	bra.b	NextPos
+Check
+	cmp.l	8(A2),D1
 	bne.b	error
 	lea	-3664(A1),A2			; 256*14+80
 	cmp.l	A0,A2
@@ -87,8 +98,19 @@ Wrong
 	dbf	D1,FindBegin
 error
 	moveq	#-1,D0
+	move.l	(SP)+,D3
 	rts
 Found
+	lea	10(A2),A0
+	move.l	#'patt',D1
+LastTest
+	cmp.l	(A0),D1
+	beq.b	FinTest
+	addq.l	#2,A0
+	bra.b	LastTest
+FinTest
+	cmp.l	A0,D3				; first 'patt' ?
+	bne.b	error
 	move.l	A2,A0
 	lea	20(A0),A1
 	moveq	#9,D1
@@ -131,6 +153,7 @@ MaxSize
 SkipSamples
 	bsr.b	GetModuleName
 	moveq	#0,D0
+	move.l	(SP)+,D3
 	rts
 
 *-----------------------------------------------------------------------------*

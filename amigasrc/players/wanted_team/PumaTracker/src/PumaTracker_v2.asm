@@ -11,10 +11,10 @@
 
 	PLAYERHEADER Tags
 
-	dc.b	'$VER: PumaTracker player module V1.0 (28 Dec 2001)',0
+	dc.b	'$VER: PumaTracker player module V1.1 (12 Apr 2006)',0
 	even
 Tags
-	dc.l	DTP_PlayerVersion,1
+	dc.l	DTP_PlayerVersion,2
 	dc.l	EP_PlayerVersion,9
 	dc.l	DTP_RequestDTVersion,DELIVERSION
 	dc.l	DTP_PlayerName,PlayerName
@@ -481,9 +481,16 @@ Check2
 	cmp.l	#'patt',(A0)+
 	bne.b	Fault
 	moveq	#32,D1
-	cmp.l	(A0)+,D1
-	bne.b	Fault
-	cmp.l	#'patt',(A0)
+NextPos
+	tst.b	3(A0)
+	beq.b	Fault
+	sub.b	3(A0),D1
+	beq.b	Check
+	bmi.b	Fault
+	addq.l	#4,A0
+	bra.b	NextPos
+Check
+	cmp.l	#'patt',4(A0)
 	bne.b	Fault
 	moveq	#0,D0
 Fault
