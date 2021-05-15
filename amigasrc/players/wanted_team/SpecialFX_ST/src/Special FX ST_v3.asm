@@ -7,15 +7,22 @@
 	incdir	"dh2:include/"
 	include "misc/eagleplayer2.01.i"
 	include	'hardware/custom.i'
+	include 'exec/exec_lib.i'
+	include 'dos/dos_lib.i'
+	include	'intuition/intuition.i'
+	include	'intuition/intuition_lib.i'
+	include	'intuition/screens.i'
+	include 'libraries/gadtools.i'
+	include 'libraries/gadtools_lib.i'
 
 	SECTION	Player,CODE
 
 	PLAYERHEADER Tags
 
-	dc.b	'$VER: Special FX ST player module V1.0 (30 Mar 2007)',0
+	dc.b	'$VER: Special FX ST player module V1.2 (18 Aug 2012)',0
 	even
 Tags
-	dc.l	DTP_PlayerVersion,1
+	dc.l	DTP_PlayerVersion,3
 	dc.l	EP_PlayerVersion,9
 	dc.l	DTP_PlayerName,PlayerName
 	dc.l	DTP_RequestDTVersion,DELIVERSION
@@ -33,6 +40,8 @@ Tags
 	dc.l	EP_Voices,SetVoices
 	dc.l	EP_StructInit,StructInit
 	dc.l	EP_GetPositionNr,GetPosition
+	dc.l	DTP_Config,Config
+	dc.l	DTP_UserConfig,UserConfig
 	dc.l	EP_Flags,EPB_Volume!EPB_Balance!EPB_ModuleInfo!EPB_Voices!EPB_Songend!EPB_Analyzer!EPB_Packable!EPB_Restart!EPB_PrevSong!EPB_NextSong!EPB_LoadFast
 	dc.l	TAG_DONE
 
@@ -43,13 +52,29 @@ Creator
 	dc.b	'Jonathan Dunn, adapted by Wanted Team',0
 Prefix
 	dc.b	'DODA.',0
+CfgPath0
+	dc.b	'/'				; necessary for Config loading
+CfgPath1
+	dc.b	'Configs/EP-Special_FX_ST.cfg',0
+CfgPath2
+	dc.b	'EnvArc:EaglePlayer/EP-Special_FX_ST.cfg',0
+CfgPath3
+	dc.b	'Env:EaglePlayer/EP-Special_FX_ST.cfg',0
 	even
+Text
+	dc.b	'Player is now using YM2149 emulation by '
+Type
+	dc.l	0
+	dc.l	0
+	dc.w	0
 ModulePtr
 	dc.l	0
 EagleBase
 	dc.l	0
 Songend
 	dc.l	'WTWT'
+EmuType
+	dc.w	0
 RightVolume
 	dc.w	64
 LeftVolume
@@ -64,6 +89,369 @@ Voice4
 	dc.w	-1
 StructAdr
 	ds.b	UPS_SizeOF
+
+***************************************************************************
+**************************** DTP_UserConfig *******************************
+***************************************************************************
+
+UserConfig
+	tst.l	dtg_GadToolsBase(A5)
+	beq.w	ExitCfg
+	sub.l	A0,A0
+	move.l	dtg_IntuitionBase(A5),A6
+	jsr	_LVOLockPubScreen(A6)		; try to lock the default pubscreen
+	move.l	D0,PubScrnPtr+4
+	beq.w	ExitCfg				; couldn't lock the screen
+
+	move.w	ib_MouseX(A6),D0
+	sub.w	#160/2,D0
+	bpl.s	SetLeftEdge
+	moveq	#0,D0
+SetLeftEdge
+	move.w	D0,WindowTags+4+2		; Window-X
+
+	move.l	dtg_IntuitionBase(A5),A6
+	move.w	ib_MouseY(A6),D0
+	sub.w	#63/2,D0
+	move.l	PubScrnPtr+4(PC),A0
+	move.l	sc_Font(A0),A0
+	sub.w	ta_YSize(A0),D0
+	bpl.s	SetTopEdge
+	moveq	#0,D0
+SetTopEdge
+	move.w	D0,WindowTags+12+2		; Window-Y
+
+	move.l	PubScrnPtr+4(PC),A0
+	suba.l	A1,A1
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOGetVisualInfoA(A6)		; get vi
+	move.l	D0,VisualInfo
+	beq.w	RemLock
+
+	lea	GadgetList+4(PC),A0		; create a place for context data
+	jsr	_LVOCreateContext(A6)
+	move.l	D0,D4
+	beq.w	FreeVi
+
+	lea	GadArray0(PC),A4		; list with gadget definitions
+	sub.w	#gng_SIZEOF,SP
+CreateGadLoop
+	move.l	(A4)+,D0			; gadget kind
+	bmi.b	CreateGadEnd			; end of Gadget List reached !
+	move.l	D4,A0				; previous
+	move.l	SP,A1				; newgad
+	move.l	(A4)+,A2			; tagList
+	clr.w	gng_GadgetID(A1)		; gadget ID
+	move.l	PubScrnPtr+4(PC),A3
+	moveq	#0,D1
+	move.b	sc_WBorLeft(A3),D1
+	add.w	(A4)+,D1
+	move.w	D1,gng_LeftEdge(A1)		; x-pos
+	move.l	PubScrnPtr+4(PC),A3
+	moveq	#1,D1
+	add.b	sc_WBorTop(A3),D1
+	move.l	sc_Font(A3),A3
+	add.w	ta_YSize(A3),D1
+	add.w	(A4)+,D1
+	move.w	D1,gng_TopEdge(A1)		; y-pos
+	move.w	(A4)+,gng_Width(A1)		; width
+	move.w	(A4)+,gng_Height(A1)		; height
+	move.l	(A4)+,gng_GadgetText(A1)	; gadget label
+	move.l	#Topaz8,gng_TextAttr(A1)	; font for gadget label
+	move.l	(A4)+,gng_Flags(A1)		; gadget flags
+	move.l	VisualInfo(PC),gng_VisualInfo(A1)	; VisualInfo
+	move.l	(A4)+,gng_UserData(A1)		; gadget UserData
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOCreateGadgetA(A6)		; create the gadget
+	move.l	D0,(A4)+			; store ^gadget
+	move.l	D0,D4
+	bne.s	CreateGadLoop			; Creation failed !
+CreateGadEnd
+	add.w	#gng_SIZEOF,SP
+	tst.l	D4
+	beq.w	FreeGads			; Gadget creation failed !
+
+	lea	WindowTags(PC),A1		; ^Window
+	suba.l	A0,A0
+	move.l	dtg_IntuitionBase(A5),A6
+	jsr	_LVOOpenWindowTagList(A6)	; Window sollte aufgehen (WA_AutoAdjust)
+	move.l	D0,WindowPtr			; Window really open ?
+	beq.s	FreeGads
+
+	move.l	WindowPtr(PC),A0		; ^Window
+	suba.l	A1,A1				; should always be NULL
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOGT_RefreshWindow(A6)	; refresh all GadTools gadgets
+
+	move.w	#-1,QuitFlag			; kein Ende :-)
+
+	move.w	TypeBase+2(PC),TypeTemp
+
+*-----------------------------------------------------------------------*
+;
+; Hauptschleife
+
+MainLoop
+	moveq	#0,D0				; clear Mask
+	move.l	WindowPtr(PC),A0		; WindowMask holen
+	move.l	wd_UserPort(A0),A0
+	move.b	MP_SIGBIT(A0),D1
+	bset.l	D1,D0
+	move.l	4.W,A6
+	jsr	_LVOWait(A6)			; Schlaf gut
+ConfigLoop
+	move.l	WindowPtr(PC),A0		; WindowMask holen
+	move.l	wd_UserPort(A0),A0
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOGT_GetIMsg(A6)
+	tst.l	D0				; no further IntuiMsgs pending?
+	beq.s	ConfigExit			; nope, exit
+	move.l	D0,-(SP)
+	move.l	D0,A1				; ^IntuiMsg
+	bsr.s	ProcessEvents
+	move.l	(SP)+,A1
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOGT_ReplyIMsg(A6)		; reply msg
+	bra.s	ConfigLoop			; get next IntuiMsg
+
+ConfigExit
+	tst.w	QuitFlag			; end ?
+	bne.s	MainLoop			; nope !
+
+*-----------------------------------------------------------------------*
+;
+; Shutdown
+
+CloseWin
+	move.l	WindowPtr(PC),A0
+	move.l	dtg_IntuitionBase(A5),A6
+	jsr 	_LVOCloseWindow(A6)			; Window zu
+FreeGads
+	move.l	GadgetList+4(PC),A0
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOFreeGadgets(A6)		; free linked list of gadgets
+	clr.l	GadgetList+4
+FreeVi
+	move.l	VisualInfo(PC),A0
+	move.l	dtg_GadToolsBase(A5),A6
+	jsr	_LVOFreeVisualInfo(A6)		; free vi
+RemLock
+	suba.l	A0,A0
+	move.l	PubScrnPtr+4(PC),A1
+	move.l	dtg_IntuitionBase(A5),A6
+	jsr	_LVOUnlockPubScreen(A6)		; unlock the screen
+ExitCfg
+	moveq	#0,D0				; no error
+	rts
+
+*-----------------------------------------------------------------------*
+;
+; Events auswerten
+
+ProcessEvents
+	move.l	im_Class(A1),D0			; get class
+	cmpi.l	#IDCMP_CLOSEWINDOW,D0		; Close ?
+	beq.w	ExitConfig
+	cmpi.l	#MXIDCMP,D0			; MX-Gadget ?
+	beq.s	DoGadget
+	cmpi.l	#BUTTONIDCMP,D0			; Button-Gadget ?
+	beq.s	DoGadget
+	rts
+
+DoGadget
+	move.l	im_IAddress(A1),A0		; auslösendes Intuitionobjekt
+	move.l	gg_UserData(A0),D0		; GadgetUserData ermitteln
+	beq.s	DoGadgetEnd			; raus, falls nicht benutzt
+	move.l	D0,A0				; Pointer kopieren
+	jsr	(A0)				; Routine anspringen
+DoGadgetEnd
+	rts
+
+*-----------------------------------------------------------------------*
+
+SetTypeBase
+	moveq	#0,D0
+	move.w	im_Code(A1),D0			; get Number
+	move.w	D0,TypeTemp
+	rts
+
+SaveConfig
+	move.l	dtg_DOSBase(A5),A6
+	moveq	#2,D5
+NextPath
+	cmp.w	#2,D5
+	bne.b	NoPath3
+	lea	CfgPath3(PC),A0
+	bra.b	PutPath
+NoPath3
+	cmp.w	#1,D5
+	bne.b	NoPath2
+	lea	CfgPath2(PC),A0
+	bra.b	PutPath
+NoPath2
+	lea	CfgPath1(PC),A0
+PutPath
+	move.l	A0,D1
+	move.l	#1006,D2			; new file
+	jsr	_LVOOpen(A6)
+	move.l	D0,D1				; file handle
+	beq.b	WrongPath
+	move.l	D0,-(SP)
+	lea	SaveBuf(PC),A0
+	move.l	A0,D2
+	moveq	#4,D3				; save size
+	jsr	_LVOWrite(A6)
+	move.l	(SP)+,D1
+	jsr	_LVOClose(A6)
+WrongPath
+	dbf	D5,NextPath
+UseConfig
+	move.w	TypeTemp(PC),TypeBase+2
+ExitConfig
+	clr.w	QuitFlag			; quit config
+	rts
+
+VisualInfo
+	dc.l	0
+WindowPtr
+	dc.l	0
+SaveBuf
+	dc.w	'WT'
+TypeTemp
+	dc.w	0
+QuitFlag
+	dc.w	0
+
+WindowTags
+	dc.l	WA_Left,0
+	dc.l	WA_Top,0
+	dc.l	WA_InnerWidth,140+20
+	dc.l	WA_InnerHeight,63
+GadgetList
+	dc.l	WA_Gadgets,0
+	dc.l	WA_Title,WindowName
+	dc.l	WA_IDCMP,IDCMP_CLOSEWINDOW!MXIDCMP!BUTTONIDCMP
+	dc.l	WA_Flags,WFLG_ACTIVATE!WFLG_DRAGBAR!WFLG_DEPTHGADGET!WFLG_CLOSEGADGET!WFLG_RMBTRAP
+PubScrnPtr
+	dc.l	WA_PubScreen,0
+	dc.l	WA_AutoAdjust,1
+	dc.l	TAG_DONE
+
+GadArray0
+	dc.l	TEXT_KIND,GadTagList0
+	dc.w	8,4,120,8
+	dc.l	0,PLACETEXT_LEFT
+	dc.l	0
+	dc.l	0
+
+GadArray1
+	dc.l	MX_KIND,GadTagList1
+	dc.w	96,16,17,9
+	dc.l	0,PLACETEXT_LEFT
+	dc.l	SetTypeBase
+	dc.l	0
+
+GadArray2
+	dc.l	BUTTON_KIND,0
+	dc.w	74,45,58,14
+	dc.l	GadText2,PLACETEXT_IN
+	dc.l	SaveConfig
+	dc.l	0
+
+GadArray3
+	dc.l	BUTTON_KIND,0
+	dc.w	8,45,58,14
+	dc.l	GadText3,PLACETEXT_IN
+	dc.l	UseConfig
+	dc.l	0
+
+	dc.l -1				; end of gadgets definitions
+
+GadTagList0
+	dc.l	GTTX_Text,GadgetText0
+	dc.l	TAG_DONE
+
+GadTagList1
+	dc.l	GTMX_Labels,MXLabels0
+	dc.l	GTMX_Active
+TypeBase
+	dc.l	0
+	dc.l	GTMX_Spacing,4
+	dc.l	TAG_DONE
+
+MXLabels0
+	dc.l	MXLabelText0
+	dc.l	MXLabelText1
+	dc.l	0
+
+Topaz8
+	dc.l	TOPAZname
+	dc.w	TOPAZ_EIGHTY
+	dc.b	$00,$01
+
+TOPAZname
+	dc.b	'topaz.font',0
+
+WindowName
+	dc.b	'Special FX ST',0
+
+MXLabelText0
+	dc.b	'Mad Max',0
+MXLabelText1
+	dc.b	'meynaf ',0
+
+GadgetText0
+	dc.b	'Set emulation type:',0
+GadText2
+	dc.b	'Save',0
+GadText3
+	dc.b	'Use',0
+	even
+
+***************************************************************************
+******************************** DTP_Config *******************************
+***************************************************************************
+
+Config
+	move.l	dtg_DOSBase(A5),A6
+	moveq	#-1,D5
+	lea	CfgPath3(PC),A0
+	bra.b	SkipPath
+SecondTry
+	moveq	#0,D5
+	lea	CfgPath0(PC),A0
+SkipPath
+	move.l	A0,D1
+	move.l	#1005,D2			; old file
+	jsr	_LVOOpen(A6)
+	move.l	D0,D1				; file handle
+	beq.b	Default
+	move.l	D0,-(SP)
+	lea	LoadBuf(PC),A4
+	clr.l	(A4)
+	move.l	A4,D2
+	moveq	#4,D3				; load size
+	jsr	_LVORead(A6)
+	move.l	(SP)+,D1
+	jsr	_LVOClose(A6)
+	cmp.w	#'WT',(A4)+
+	bne.b	Default
+	move.w	(A4),D1
+	beq.b	PutMode
+	cmp.w	#1,D1
+	beq.b	PutMode
+Default
+	tst.l	D5
+	bne.b	SecondTry
+	moveq	#0,D1				; default mode
+PutMode
+	lea	TypeBase+2(PC),A0
+	move.w	D1,(A0)
+	moveq	#0,D0
+	rts
+
+LoadBuf
+	dc.l	0
 
 ***************************************************************************
 ********************************* EP_GetPosNr *****************************
@@ -310,6 +698,7 @@ InfoBuffer
 	dc.l	MI_Voices,0		;44
 	dc.l	MI_MaxVoices,3
 	dc.l	MI_Prefix,Prefix
+	dc.l	MI_About,Text
 	dc.l	0
 
 ***************************************************************************
@@ -351,8 +740,13 @@ Interrupt
 	bsr.w	InitSound			; repeat on
 PlayIt
 	bsr.w	Play
-	bsr.w	Play_Emu
-
+	move.w	EmuType(PC),D1
+	bne.b	NoOne
+	bsr.w	Play_Emu1
+	bra.b	SkipTwo
+NoOne
+	bsr.w	Play_Emu2
+SkipTwo
 	lea	StructAdr(PC),A0
 	clr.w	UPS_Enabled(A0)
 
@@ -394,11 +788,12 @@ SkipEnd
 ***************************************************************************
 
 InitPlayer
-	lea	lbL001070,A0
+	lea	Noise1,A0
 	tst.l	(A0)
 	bne.b	SampOK
-	bsr.w	InitSamp
-	move.l	#$B2B24D4D,(A0)
+	bsr.w	InitNoise1
+	bsr.w	InitNoise2
+	move.l	#$7090B24D,(A0)		; pulse sample v2+v1
 SampOK
 	moveq	#0,D0
 	movea.l	dtg_GetListData(A5),A0
@@ -557,7 +952,7 @@ FindA
 	move.l	A1,CalcSize(A4)
 	move.l	A1,SongSize(A4)
 	cmp.l	LoadSize(A4),A1
-	bgt.b	Short
+	bgt.w	Short
 	tst.l	D7				; Base
 	beq.b	Skip2
 FindEnd
@@ -594,6 +989,17 @@ Skip2
 	beq.b	Skip
 	move.l	D0,SubSongs(A4)
 Skip
+	lea	Type(PC),A1
+	move.l	#'Mad ',(A1)
+	move.l	#'Max!',4(A1)
+	move.l	TypeBase(PC),D0
+	beq.b	V1
+	move.l	#'meyn',(A1)
+	move.l	#'af! ',4(A1)
+V1
+	lea	EmuType(PC),A0
+	move.w	D0,(A0)
+
 	movea.l	dtg_AudioAlloc(A5),A0
 	jmp	(A0)
 Short
@@ -602,8 +1008,9 @@ Short
 Error
 	moveq	#EPR_ErrorInFile,D0
 	rts
+
 SetEmu
-	lea	lbL000E26(PC),A0
+	lea	YM2149Base(PC),A0
 	move.b	(A2)+,2(A0)
 	move.b	(A2)+,6(A0)
 	move.b	(A2)+,10(A0)
@@ -636,7 +1043,14 @@ ClearUPS
 	clr.w	(A0)+
 	cmp.l	A0,A1
 	bne.b	ClearUPS
-	bsr.w	Init_Emu
+
+	move.w	EmuType(PC),D0
+	bne.b	Init2
+	bsr.w	Init_Emu1
+	bra.b	SkipInit2
+Init2
+	bsr.w	Init_Emu2
+SkipInit2
 	lea	Songend(PC),A0
 	move.l	#$FF00FFFF,(A0)
 
@@ -777,24 +1191,37 @@ NotePlay
 .Done
 	rts
 
-Init_Emu
+Init_Emu1
 lbC000392	LEA	lbL000616(PC),A0
 	MOVE.W	#0,10(A0)
 	LEA	lbL000622(PC),A0
 	MOVE.W	#0,10(A0)
 	LEA	lbL00062E(PC),A0
 	MOVE.W	#0,10(A0)
-	LEA	lbL000E26(PC),A0
-	MOVE.B	#$3B,$1E(A0)
-	MOVE.B	#$10,$2A(A0)
-	MOVE.B	#0,$26(A0)
-	MOVE.B	#0,$22(A0)
-	MOVE.B	#4,$16(A0)
-	MOVE.B	#0,$12(A0)
+
+	lea	NoiseFlag(PC),A0		;+
+	clr.w	(A0)				;+
+	clr.w	2(A0)				;+
+	clr.w	12(A0)
+
+	LEA	YM2149Base(PC),A0
+
+	clr.b	0*4+2(A0)
+	clr.b	1*4+2(A0)
+	clr.b	2*4+2(A0)
+	clr.b	3*4+2(A0)
+	clr.b	4*4+2(A0)
+	clr.b	5*4+2(A0)
+	clr.b	6*4+2(A0)
+	move.b	#$3F,7*4+2(A0)
+	clr.b	8*4+2(A0)
+	clr.b	9*4+2(A0)
+	clr.b	10*4+2(A0)
+
 	RTS
 
-Play_Emu
-	LEA	lbL000E26(PC),A6
+Play_Emu1
+	LEA	YM2149Base(PC),A6
 	MOVE.B	$1E(A6),D7
 	NOT.B	D7
 	ANDI.W	#$3F,D7
@@ -831,35 +1258,65 @@ Play_Emu
 	MOVE.B	$12(A6),D4
 	MOVE.B	$2A(A6),D3
 	BSR.L	lbC0004DC
+
+	moveq	#3,D5
+	lea	$DFF0B0,A1
+	lea	NoiseFlag(PC),A0			;+
+	tst.w	(A0)+
+	bne.b	ExtraNoise
+	tst.w	10(A0)
+	beq.b	Off
+	bra.w	Disable
+ExtraNoise
+	bsr.w	lbC00054A
+	clr.w	(A0)
+Off
 	RTS
+
+NoiseFlag
+	dc.w	0
+NoiseVol
+	dc.w	0
+NoisePer
+	dc.w	0
+	dc.w	0
+	dc.w	0
+	dc.w	0
+	dc.w	0
 
 lbB0004CA	dc.b	0
 	dc.b	1
+	dc.b	1
+	dc.b	1
+	dc.b	2
 	dc.b	2
 	dc.b	3
 	dc.b	4
 	dc.b	6
 	dc.b	8
-	dc.b	10
-	dc.b	13
-	dc.b	$10
-	dc.b	$14
-	dc.b	$18
-	dc.b	$1E
-	dc.b	$26
-	dc.b	$30
-	dc.b	$40
+	dc.b	11
+	dc.b	16
+	dc.b	23
+	dc.b	32
+	dc.b	45
+	dc.b	64
 
 lbC0004DC
 
 	and.w	#15,D3
 
 	MOVE.B	lbB0004CA(PC,D3.W),1(A0)
+;	MULU.W	#7,D4
+
+;2005312/16=125331.9875			YM2149 clock/16 (internally)
+;123331.9875*2=250663.975		size of pulse sample = 2
+;3546895/250663.975=14.149		PAL timer
+;3579546/250663.975=14.28		NTSC timer
 
 	and.w	#$FFF,D4
-
-	MULU.W	#7,D4
-
+	mulu.w	#14540,D4		; 14.2*1024
+	moveq	#10,D0
+	lsr.l	D0,D4			; * 14.2
 	addq.w	#1,D4
 
 	MOVE.W	D4,2(A0)
@@ -867,8 +1324,8 @@ lbC0004DC
 	BNE.L	lbC0005DA
 	BTST	D6,D7
 	BNE.L	lbC00054A
-
-	lea	lbL001470,A2
+Disable
+	lea	Empty,A2
 	move.l	A2,A3
 	move.l	#$10001,D4
 	bsr.w	NotePlay
@@ -892,7 +1349,7 @@ lbC00054A	MOVE.W	10(A0),D0
 	BEQ.S	lbC000582
 	MOVE.W	#2,10(A0)
 
-	lea	lbL001070,A2
+	lea	Noise1,A2
 	move.l	A2,A3
 	move.l	#$2000200,D4
 	bsr.w	NotePlay
@@ -905,47 +1362,95 @@ lbC000582	MOVEQ	#0,D0
 	MOVE.W	D0,2(A0)
 	BRA.L	lbC000530
 
-lbW00059A	dc.w	$280
-	dc.w	$270
-	dc.w	$260
-	dc.w	$250
-	dc.w	$240
-	dc.w	$230
-	dc.w	$220
-	dc.w	$210
-	dc.w	$200
-	dc.w	$1F0
-	dc.w	$1E0
-	dc.w	$1D0
-	dc.w	$1C0
-	dc.w	$1B0
-	dc.w	$1A0
-	dc.w	$190
-	dc.w	$180
-	dc.w	$170
-	dc.w	$160
-	dc.w	$150
-	dc.w	$140
-	dc.w	$130
-	dc.w	$120
-	dc.w	$110
-	dc.w	$100
-	dc.w	$F0
-	dc.w	$E0
-	dc.w	$D0
-	dc.w	$C0
-	dc.w	$B0
-	dc.w	$A0
-	dc.w	$90
+lbW00059A
+	dc.w	142+14*31
+	dc.w	142+14*30
+	dc.w	142+14*29
+	dc.w	142+14*28
+	dc.w	142+14*27
+	dc.w	142+14*26
+	dc.w	142+14*25
+	dc.w	142+14*24
+	dc.w	142+14*23
+	dc.w	142+14*22
+	dc.w	142+14*21
+	dc.w	142+14*20
+	dc.w	142+14*19
+	dc.w	142+14*18
+	dc.w	142+14*17
+	dc.w	142+14*16
+	dc.w	142+14*15
+	dc.w	142+14*14
+	dc.w	142+14*13
+	dc.w	142+14*12
+	dc.w	142+14*11
+	dc.w	142+14*10
+	dc.w	142+14*9
+	dc.w	142+14*8
+	dc.w	142+14*7
+	dc.w	142+14*6
+	dc.w	142+14*5
+	dc.w	142+14*4
+	dc.w	142+14*3
+	dc.w	142+14*2
+	dc.w	142+14*1
+	dc.w	142+14*0
 
-lbC0005DA	MOVE.W	10(A0),D0
+;	dc.w	$280
+;	dc.w	$270
+;	dc.w	$260
+;	dc.w	$250
+;	dc.w	$240
+;	dc.w	$230
+;	dc.w	$220
+;	dc.w	$210
+;	dc.w	$200
+;	dc.w	$1F0
+;	dc.w	$1E0
+;	dc.w	$1D0
+;	dc.w	$1C0
+;	dc.w	$1B0
+;	dc.w	$1A0
+;	dc.w	$190
+;	dc.w	$180
+;	dc.w	$170
+;	dc.w	$160
+;	dc.w	$150
+;	dc.w	$140
+;	dc.w	$130
+;	dc.w	$120
+;	dc.w	$110
+;	dc.w	$100
+;	dc.w	$F0
+;	dc.w	$E0
+;	dc.w	$D0
+;	dc.w	$C0
+;	dc.w	$B0
+;	dc.w	$A0
+;	dc.w	$90
+
+lbC0005DA
+	btst	D6,D7				; +
+	beq.b	SetPulse
+	st	NoiseFlag
+	move.w	(A0),D0
+	subq.b	#1,D3
+	bmi.b	.Skip
+	lea	lbB0004CA(PC),A2
+	move.b	(A2,D3.W),D0
+.Skip
+	cmp.w	NoiseVol(PC),D0
+	ble.b	SetPulse
+	move.w	D0,NoiseVol
+SetPulse
+	MOVE.W	10(A0),D0
 	CMP.W	#1,D0
 	BEQ.S	lbC000612
 	MOVE.W	#1,10(A0)
 
-	lea	lbL001478,A2
+	lea	Pulse1,A2
 	move.l	A2,A3
-	move.l	#$20002,D4
+	move.l	#$10001,D4
 	bsr.w	NotePlay
 
 lbC000612	BRA.L	lbC000530
@@ -960,8 +1465,7 @@ lbL00062E	dc.l	0
 	dc.l	0
 	dc.l	0
 
-InitSamp
-	LEA	lbL001070,A0
+InitNoise1
 	MOVE.W	#$3FF,D2
 lbC000DD4	BSR.S	lbC000DE2
 	MOVE.B	D0,(A0)+
@@ -992,7 +1496,7 @@ lbC000DE2	MOVE.L	lbL000DDE,D0
 	LSR.L	#8,D0
 	RTS
 
-lbL000E26
+YM2149Base
 	dc.l	0		; YM-2149 LSB period base (canal A)
 	dc.l	$1000000	; YM-2149 MSB period base (canal A)
 	dc.l	$2000000	; YM-2149 LSB period base (canal B)
@@ -2085,11 +2589,239 @@ lbL002D7C
 lbL002FE4
 	dc.l	0
 
-	Section	Buffy,BSS_C
+Init_Emu2
+	lea	Noise2,A2
+	lea	Pulse2,A0
+	moveq	#1,D0
+	move.w	#$2000,D1
+	lea	StructAdr+UPS_Voice1Adr(PC),A1
+	move.l	A0,(A1)+
+	move.w	D0,(A1)+
+	move.w	D0,(A1)+
+	addq.l	#8,A1
+	move.w	D0,(A1)+	; repeat on
+	move.l	A0,(A1)+
+	move.w	D0,(A1)+
+	move.w	D0,(A1)+
+	addq.l	#8,A1
+	move.w	D0,(A1)+	; repeat on
+	move.l	A0,(A1)+
+	move.w	D0,(A1)+
+	move.w	D0,(A1)+
+	addq.l	#8,A1
+	move.w	D0,(A1)+	; repeat on
+	move.l	A2,(A1)+
+	move.w	D1,(A1)+
+	move.w	D0,(A1)+
+	addq.l	#8,A1
+	move.w	D0,(A1)		; repeat on
+	moveq	#0,D2
+	move.w	#15,$DFF096
+	lea	$DFF0A0,A1
+	move.l	A0,(A1)+	; address
+	move.w	D0,(A1)+	; length
+	move.w	D0,(A1)+	; period
+	move.l	D2,(A1)+	; volume + data
+	addq.l	#4,A1
+	move.l	A0,(A1)+
+	move.w	D0,(A1)+
+	move.w	D0,(A1)+
+	move.l	D2,(A1)+
+	addq.l	#4,A1
+	move.l	A0,(A1)+
+	move.w	D0,(A1)+
+	move.w	D0,(A1)+
+	move.l	D2,(A1)+
+	addq.l	#4,A1
+	move.l	A2,(A1)+
+	move.w	D1,(A1)+
+	move.w	D0,(A1)+
+	move.l	D2,(A1)
+	lea	YM2149Base(PC),A0
+	clr.b	2(A0)
+	clr.b	6(A0)
+	clr.b	10(A0)
+	clr.b	14(A0)
+	clr.b	18(A0)
+	clr.b	22(A0)
+	clr.b	26(A0)
+	st.b	30(A0)
+	clr.b	34(A0)
+	clr.b	38(A0)
+	clr.b	42(A0)
+	rts
 
-lbL001070
+GetData
+	moveq	#0,D2
+	moveq	#0,D3
+	move.b	6(A0),D0
+	lsl.w	#8,D0
+	move.b	2(A0),D0
+	addq.l	#8,A0
+	and.w	#$FFF,D0
+	move.b	(A4),D1
+	addq.l	#4,A4
+	and.w	#15,D1
+	lsr.b	#1,D7
+	tst.w	D0
+	beq.b	NoCalc
+	mulu.w	#$58B,D0
+	divu.w	#$64,D0
+	move.w	D0,D3
+NoCalc
+	btst	#2,D7
+	BNE.S	mbC00025A
+	MOVE.W	D1,D2
+	BEQ.S	mbC00025A
+	TST.W	D3
+	BEQ.S	mbC00025A
+	SUBQ.B	#2,D1
+	BCC.S	mbC000254
+	MOVEQ	#1,D1
+mbC000254	SUBQ.B	#1,D2
+	BNE.S	mbC00025A
+	moveq	#1,D2
+mbC00025A
+	cmp.w	#$7B,D3
+	bcc.b	PeriodOK
+	moveq	#0,D3
+PeriodOK
+	lea	VolumeTable2(PC),A2
+	move.b	(A2,D1.W),D1
+	move.b	(A2,D2.W),D2
+	rts
+
+Play_Emu2
+	lea	YM2149Base(PC),A5
+	move.l	A5,A0
+	lea	34(A0),A4
+	lea	$DFF0A0,A1
+	move.b	30(A5),D7
+	moveq	#2,D6
+	moveq	#0,D4
+	moveq	#0,D5
+NextChannel2
+	bsr.w	GetData
+	add.w	D2,D5
+	move.w	D3,D0
+	beq.b	ZeroPeriod
+	move.w	D3,6(A1)
+	bsr.w	SetPer
+	bset	#3,D4
+ZeroPeriod
+	move.w	D1,D0
+	bsr.w	ChangeVolume
+	bsr.w	SetVol
+	move.w	D0,8(A1)
+	lsr.w	#1,D4
+	lea	$10(A1),A1
+	dbf	D6,NextChannel2
+	lea	NoisePeriod2(PC),A2
+	move.b	26(A5),D2
+	and.w	#$1F,D2
+	add.w	D2,D2
+	move.w	(A2,D2.W),D0
+	move.w	D0,6(A1)
+	bsr.w	SetPer
+	cmp.w	#64,D5
+	bcs.b	NotTooHigh
+	moveq	#64,D5
+NotTooHigh
+	move.w	D5,D0
+	bsr.w	ChangeVolume
+	bsr.w	SetVol
+	move.w	D0,8(A1)
+	move.b	30(A5),D2
+	moveq	#$38,D3
+	and.w	D3,D2
+	eor.w	D3,D2
+	sne	D2
+	and.w	#8,D2
+	add.w	D2,D4
+	or.w	#$8000,D4
+	move.w	D4,$DFF096
+	eor.w	#$800F,D4
+	move.w	D4,$DFF096
+	rts
+
+InitNoise2
+	MOVE.W	#$3FFF,D2
+	MOVEQ	#0,D3
+NextByte2
+	MOVE.L	D3,D0
+	MOVE.L	D0,D1
+	ASL.L	#3,D1
+	SUB.L	D0,D1
+	ASL.L	#3,D1
+	ADD.L	D0,D1
+	ADD.L	D1,D1
+	ADD.L	D0,D1
+	ASL.L	#4,D1
+	SUB.L	D0,D1
+	ADD.L	D1,D1
+	SUB.L	D0,D1
+	ADDI.L	#$E90,D0
+	LSL.W	#4,D0
+	ADD.L	D0,D1
+	BCLR	#$1F,D1
+	SUBQ.L	#1,D1
+	MOVE.L	D1,D3
+	LSR.W	#8,D1
+	MOVE.B	D1,(A0)+
+	DBRA	D2,NextByte2
+	RTS
+
+NoisePeriod2
+	dc.w	$80
+	dc.w	$A0
+	dc.w	$C0
+	dc.w	$E0
+	dc.w	$100
+	dc.w	$120
+	dc.w	$140
+	dc.w	$160
+	dc.w	$180
+	dc.w	$1A0
+	dc.w	$1C0
+	dc.w	$1E0
+	dc.w	$200
+	dc.w	$220
+	dc.w	$240
+	dc.w	$260
+	dc.w	$280
+	dc.w	$2A0
+	dc.w	$2C0
+	dc.w	$2E0
+	dc.w	$300
+	dc.w	$320
+	dc.w	$340
+	dc.w	$360
+	dc.w	$380
+	dc.w	$3A0
+	dc.w	$3C0
+	dc.w	$3E0
+	dc.w	$400
+	dc.w	$420
+	dc.w	$440
+	dc.w	$460
+VolumeTable2
+	dc.w	1
+	dc.w	$101
+	dc.w	$202
+	dc.w	$304
+	dc.w	$608
+	dc.w	$B10
+	dc.w	$1720
+	dc.w	$2D40
+
+	Section	Buffy,BSS_C
+Noise1
 	ds.b	1024
-lbL001478
-	ds.b	4
-lbL001470
-	ds.b	4
+Noise2
+	ds.b	16384
+Pulse2
+	ds.b	2
+Pulse1
+	ds.b	2
+Empty
+	ds.b	2
