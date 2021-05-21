@@ -133,8 +133,8 @@ static const char *offset_0024_patterns[] = {
 // TODO: Complete list from amifilemagic.
 //       offset_0000_patterns and offset_0024_patterns have been input.
 static struct uade_ext_to_format_version etf[] = {
-	{.file_ext = "aon4", .format = "Art Of Noise (4ch)"},
-	{.file_ext = "aon8", .format = "Art Of Noise (8ch)"},
+	{.file_ext = "aon4", .format = "Art Of Noise (4 ch)"},
+	{.file_ext = "aon8", .format = "Art Of Noise (8 ch)"},
 	{.file_ext = "abk", .format = "Amos ABK"},
 	{.file_ext = "ahx", .format = "AHX"},
 	{.file_ext = "amc", .format = "A.M.Composer"},
@@ -155,8 +155,8 @@ static struct uade_ext_to_format_version etf[] = {
 	// {.file_ext = "ems", .format = "Editeur Musical Sequentiel"},
 	{.file_ext = "emsv6", .format = "Editeur Musical Sequentiel",
 	 .version = "6"},
-	{.file_ext = "fc13", .format = "Future Composer", .version="1.3"},
-	{.file_ext = "fc14", .format = "Future Composer", .version="1.4"},
+	{.file_ext = "fc13", .format = "Future Composer", .version = "1.3"},
+	{.file_ext = "fc14", .format = "Future Composer", .version = "1.4"},
 	{.file_ext = "fc-m", .format = "FC-M Packer"},
 	{.file_ext = "fp", .format = "Future Player"},
 	{.file_ext = "ftm", .format = "Face The Music"},
@@ -164,15 +164,27 @@ static struct uade_ext_to_format_version etf[] = {
 	{.file_ext = "glue", .format = "GlueMon"},
 	{.file_ext = "gray", .format = "Fred Gray"},
 	{.file_ext = "hd", .format = "Howie Davies"},
-	{.file_ext = "is", .format = "In Stereo", .version="1"},
-	{.file_ext = "is20", .format = "In Stereo", .version="2"},
+	{.file_ext = "is", .format = "In Stereo", .version = "1"},
+	{.file_ext = "is20", .format = "In Stereo", .version = "2"},
 	{.file_ext = "jam", .format = "JamCracker"},
 	{.file_ext = "jmf", .format = "Janko Mrsic-Flogel"},
 	{.file_ext = "mxtx", .format = "Maxtrax"},
 	{.file_ext = "mcmd_org", .format = "MCMD"},
 	{.file_ext = "mmdc", .format = "MED Packer"},
 	{.file_ext = "ml", .format = "Musicline Editor"},
-	{.file_ext = "mod", .format = "ProTracker", .version="3.0"},
+
+	// Pro/Sound/NoiseTracker and variants
+	{.file_ext = "mod_adsc4", .format = "Audio Sculpture (4 ch)"},
+	{.file_ext = "mod_adsc8", .format = "Audio Sculpture (8 ch)"},
+	{.file_ext = "mod_ntk", .format = "NoiseTracker", .version = "1.x"},
+	{.file_ext = "mod_ntkamp", .format = "NoiseTracker"},
+	{.file_ext = "mod_ntk1", .format = "NoiseTracker", .version = "1.2"},
+	{.file_ext = "mod_ntk2", .format = "NoiseTracker", .version = "2.0"},
+	{.file_ext = "mod", .format = "ProTracker"},
+	{.file_ext = "mod_flt4", .format = "StarTrekker (4 ch)"},
+	{.file_ext = "mod_flt8", .format = "StarTrekker (8 ch)"},
+	{.file_ext = "mod_doc", .format = "SoundTracker", .version = "2.4"},
+
 	{.file_ext = "mso", .format = "Medley"},
 	// Note: Check spelling of MultiTracker, find modules
 	{.file_ext = "mtm", .format = "MultiTracker"},
@@ -599,9 +611,9 @@ static int mod32check(unsigned char *buf, size_t bufsize, size_t realfilesize,
       /* PC tracker:			0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f +e## */
 
       for (j = 17; j <= 31; j++) {
-	if (pfx[j] != 0 || finetune_used >0) /* Extended fx used */ {
+	if (pfx[j] != 0 || finetune_used > 0) /* Extended fx used */ {
 	  if (buf[0x3b7] != 0x7f && buf[0x3b7] != 0x78) {
-	    return MOD_FASTTRACKER; /* Definetely Fasttracker*/
+	    return MOD_FASTTRACKER; /* Definitely FastTracker */
 	  } else {
 	    return MOD_PROTRACKER; /* Protracker*/
 	  }
