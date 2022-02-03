@@ -196,7 +196,8 @@ int main(int argc, char *argv[])
 		OPT_SCOPE,
 		OPT_SET,
 		OPT_STDERR,
-		OPT_VERSION
+		OPT_VERSION,
+		OPT_WRITE_AUDIO_FILE,
 	};
 
 	struct option long_options[] = {
@@ -244,6 +245,7 @@ int main(int argc, char *argv[])
 		{"timeout",          1, NULL, 't'},
 		{"verbose",          0, NULL, 'v'},
 		{"version",          0, NULL, OPT_VERSION},
+		{"write-audio",      1, NULL, OPT_WRITE_AUDIO_FILE},
 		{NULL,               0, NULL, 0}
 	};
 
@@ -420,6 +422,11 @@ int main(int argc, char *argv[])
 		case OPT_VERSION:
 			printf("uade123 %s\n", UADE_VERSION);
 			exit(0);
+			break;
+
+		case OPT_WRITE_AUDIO_FILE:
+			uade_config_set_option(uc_cmdline, UC_WRITE_AUDIO_FILE,
+					       optarg);
 			break;
 
 		case OPT_AO_OPTION:
@@ -679,6 +686,7 @@ static void print_help(void)
 " -S filename,        Set sound core name\n"
 " --scope,            Turn on Paula hardware register debug mode\n"
 " -u uadename,        Set uadecore executable name\n"
+" --write-audio fname, Dump audio register outputs to fname\n"
 "\n");
 
 	print_action_keys();

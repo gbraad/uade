@@ -85,6 +85,17 @@ static void send_resampling_command(struct uade_ipc *ipc,
 		uade_warning("Can not set resampling mode\n");
 }
 
+static void send_write_audio_file_command(struct uade_ipc *ipc,
+					  struct uade_config *uadeconf)
+{
+	char *fname = uadeconf->write_audio_file.name;
+	if (strlen(fname) > 0) {
+		if (uade_send_string(UADE_COMMAND_SET_WRITE_AUDIO_FNAME, fname,
+				     ipc))
+			uade_warning("Can not set write audio fname\n");
+	}
+}
+
 void uade_subsong_control(int subsong, int command, struct uade_ipc *ipc)
 {
 	assert(subsong >= 0 && subsong < 256);
@@ -166,8 +177,8 @@ int uade_song_initialization(struct uade_file *player, struct uade_file *module,
 	}
 
 	uade_send_filter_command(state);
-
 	send_resampling_command(ipc, uc);
+	send_write_audio_file_command(ipc, uc);
 
 	if (uc->speed_hack) {
 		if (uade_send_short_message(UADE_COMMAND_SPEED_HACK, ipc)) {

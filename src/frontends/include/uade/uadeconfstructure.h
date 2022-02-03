@@ -81,6 +81,7 @@ struct uade_config {
 	UADE_CHAR_CONFIG(use_timeouts);
 	UADE_CHAR_CONFIG(use_ntsc);
 	UADE_CHAR_CONFIG(verbose);
+	UADE_PATH_CONFIG(write_audio_file);
 
 	struct uade_ao_options ao_options;
 	char ao_options_set;

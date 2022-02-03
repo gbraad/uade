@@ -28,7 +28,7 @@ OBJS = main.o newcpu.o memory.o custom.o cia.o audio.o compiler.o cpustbl.o \
        missing.o sd-sound.o md-support.o cfgfile.o fpp.o debug.o \
        readcpu.o cpudefs.o $(CPUEMUOBJS) \
        uade.o uadeipc.o uadeutils.o unixatomic.o ossupport.o \
-       uademain.o sinctable.o text_scope.o
+       uademain.o sinctable.o text_scope.o write_audio.o
 
 all:	uadecore
 
@@ -165,3 +165,5 @@ uadeutils.c:	frontends/common/uadeutils.c
 uadeutils.o:	uadeutils.c frontends/include/uade/uadeutils.h
 
 textscope.o:	text_scope.c include/text_scope.h include/custom.h
+
+write_audio.o:	write_audio.c include/write_audio.h

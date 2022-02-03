@@ -432,6 +432,8 @@ void uade_merge_configs(struct uade_config *ucd, const struct uade_config *ucs)
 	MERGE_OPTION(use_text_scope);
 	MERGE_OPTION(use_ntsc);
 	MERGE_OPTION(verbose);
+
+	MERGE_OPTION(write_audio_file);
 }
 
 char *uade_open_create_home(void)
@@ -522,7 +524,8 @@ void uade_set_effects(struct uade_state *state)
 	uade_effect_set_sample_rate(state, uc->frequency);
 }
 
-static void handle_config_path(struct uade_path *path, char *set, const char *value)
+static void handle_config_path(struct uade_path *path, char *set,
+			       const char *value)
 {
 	strlcpy(path->name, value, sizeof path->name);
 	*set = 1;
@@ -751,11 +754,13 @@ void uade_config_set_option(struct uade_config *uc, enum uade_option opt,
 		break;
 
 	case UC_UADECORE_FILE:
-		handle_config_path(&uc->uadecore_file, &uc->uadecore_file_set, value);
+		handle_config_path(&uc->uadecore_file,
+				   &uc->uadecore_file_set, value);
 		break;
 
 	case UC_UAE_CONFIG_FILE:
-		handle_config_path(&uc->uae_config_file, &uc->uae_config_file_set, value);
+		handle_config_path(&uc->uae_config_file,
+				   &uc->uae_config_file_set, value);
 		break;
 
 	case UC_USE_TEXT_SCOPE:
@@ -764,6 +769,11 @@ void uade_config_set_option(struct uade_config *uc, enum uade_option opt,
 
 	case UC_VERBOSE:
 		SET_OPTION(verbose, 1);
+		break;
+
+	case UC_WRITE_AUDIO_FILE:
+		handle_config_path(&uc->write_audio_file,
+				   &uc->write_audio_file_set, value);
 		break;
 
 	default:

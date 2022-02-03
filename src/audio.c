@@ -28,6 +28,7 @@
 #include "sinctable.h"
 
 #include "text_scope.h"
+#include "write_audio.h"
 
 
 struct audio_channel_data audio_channel[4];
@@ -41,6 +42,8 @@ static float next_sample_evtime;
 int sound_available;
 
 static int use_text_scope;
+
+static struct uade_write_audio *write_audio_state;
 
 static int sound_use_filter = FILTER_MODEL_A500;
 
@@ -155,6 +158,16 @@ static void check_sound_buffers (void)
     }
 }
 
+static inline void write_left_right(int left, int right)
+{
+    if (write_audio_state != NULL)
+	    uade_write_audio_write_left_right(write_audio_state, left, right);
+
+    *(sndbufpt++) = left;
+    *(sndbufpt++) = right;
+
+    check_sound_buffers();
+}
 
 static inline void sample_backend(int left, int right)
 {
@@ -178,24 +191,21 @@ static inline void sample_backend(int left, int right)
 	right = filter(right, &sound_filter_state[1]);
     }
 
-    *(sndbufpt++) = left;
-    *(sndbufpt++) = right;
-
-    check_sound_buffers();
+    write_left_right(left, right);
 }
 
 
 static void sample16s_handler (void)
 {
-    int datas[4];
+    int output[4];
     int i;
 
     for (i = 0; i < 4; i++) {
-	datas[i] = audio_channel[i].current_sample * audio_channel[i].vol;
-	datas[i] &= audio_channel[i].adk_mask;
+	output[i] = audio_channel[i].current_sample * audio_channel[i].vol;
+	output[i] &= audio_channel[i].adk_mask;
     }
 
-    sample_backend(datas[0] + datas[3], datas[1] + datas[2]);
+    sample_backend(output[0] + output[3], output[1] + output[2]);
 }
 
 
@@ -204,17 +214,19 @@ static void sample16s_handler (void)
 static void sample16si_anti_handler (void)
 {
     int i;
-    int datas[4];
+    int output[4];
 
     for (i = 0; i < 4; i += 1) {
-        datas[i] = audio_channel[i].sample_accum / audio_channel[i].sample_accum_time;
+	/* Take the integrated value of the previous time window */
+	output[i] = (audio_channel[i].sample_accum /
+		    audio_channel[i].sample_accum_time);
+	/* Reset accumulator to start a new time window */
         audio_channel[i].sample_accum = 0;
 	audio_channel[i].sample_accum_time = 0;
     }
 
-    sample_backend(datas[0] + datas[3], datas[1] + datas[2]);
+    sample_backend(output[0] + output[3], output[1] + output[2]);
 }
-
 
 /* this interpolator performs BLEP mixing (bleps are shaped like integrated sinc
  * functions) with a type of BLEP that matches the filtering configuration. */
@@ -222,7 +234,7 @@ static void sample16si_sinc_handler (void)
 {
     int i, n;
     int const *winsinc;
-    int datas[4];
+    int output[4];
 
     if (sound_use_filter) {
 	n = (sound_use_filter == FILTER_MODEL_A500) ? 0 : 2;
@@ -247,46 +259,59 @@ static void sample16si_sinc_handler (void)
             sum -= winsinc[age] * acd->sinc_queue[offsetpos].output;
             offsetpos = (offsetpos + 1) & (SINC_QUEUE_LENGTH - 1);
         }
-        datas[i] = sum >> 16;
+        output[i] = sum >> 16;
     }
 
-    *(sndbufpt++) = clamp_sample(datas[0] + datas[3]);
-    *(sndbufpt++) = clamp_sample(datas[1] + datas[2]);
+    const int left = clamp_sample(output[0] + output[3]);
+    const int right = clamp_sample(output[1] + output[2]);
 
-    check_sound_buffers();
+    write_left_right(left, right);
 }
 
 
 static void anti_prehandler(unsigned long best_evtime)
 {
-    int i, j, output;
-    struct audio_channel_data *acd;
+    int i;
 
     /* Handle accumulator antialiasiation */
     for (i = 0; i < 4; i++) {
-	acd = &audio_channel[i];
-	output = (acd->current_sample * acd->vol) & acd->adk_mask;
+	struct audio_channel_data *acd = &audio_channel[i];
+	const int output = (acd->current_sample * acd->vol) & acd->adk_mask;
 	acd->sample_accum += output * best_evtime;
 	acd->sample_accum_time += best_evtime;
     }
 }
 
+static void uade_write_audio_handler(unsigned long best_evtime)
+{
+    int i;
+    int output[4];
+
+    /* Handle accumulator antialiasiation */
+    for (i = 0; i < 4; i++) {
+	struct audio_channel_data *acd = &audio_channel[i];
+	output[i] = (acd->current_sample * acd->vol) & acd->adk_mask;
+    }
+
+    uade_write_audio_write(write_audio_state, output, best_evtime);
+}
 
 static void sinc_prehandler(unsigned long best_evtime)
 {
-    int i, j, output;
-    struct audio_channel_data *acd;
+    int i;
 
     for (i = 0; i < 4; i++) {
-	acd = &audio_channel[i];
-	output = (acd->current_sample * acd->vol) & acd->adk_mask;
+	struct audio_channel_data *acd = &audio_channel[i];
+	const int output = (acd->current_sample * acd->vol) & acd->adk_mask;
 
         /* if output state changes, record the state change and also
          * write data into sinc queue for mixing in the BLEP */
         if (acd->output_state != output) {
-            acd->sinc_queue_head = (acd->sinc_queue_head - 1) & (SINC_QUEUE_LENGTH - 1);
+            acd->sinc_queue_head = (acd->sinc_queue_head - 1) & (
+		SINC_QUEUE_LENGTH - 1);
             acd->sinc_queue[acd->sinc_queue_head].time = acd->sinc_queue_time;
-            acd->sinc_queue[acd->sinc_queue_head].output = output - acd->output_state;
+            acd->sinc_queue[acd->sinc_queue_head].output = (
+		output - acd->output_state);
             acd->output_state = output;
         }
         
@@ -314,6 +339,9 @@ static void audio_handler (int nr)
 	    cdp->wlen = (cdp->wlen - 1) & 0xFFFF;
 	cdp->nextdat = chipmem_bank.wget(cdp->pt);
 
+	if (write_audio_state != NULL && cdp->pt == cdp->lc)
+	    uade_write_audio_set_state(write_audio_state, nr, PET_LOOP, 0);
+
 	cdp->nextdatpt = cdp->pt;
 	cdp->nextdatptend = cdp->ptend;
 
@@ -330,7 +358,7 @@ static void audio_handler (int nr)
 	cdp->datpt = cdp->nextdatpt;
 	cdp->datptend = cdp->nextdatptend;
 
-	cdp->current_sample = (uae_s8)(cdp->dat >> 8);
+	cdp->current_sample = (uae_s8) (cdp->dat >> 8);
 
 	cdp->state = 2;
 	{
@@ -388,7 +416,7 @@ static void audio_handler (int nr)
 
 	    if ((cdp->intreq2 && cdp->dmaen && napnav)
 		|| (napnav && !cdp->dmaen)) {
-	      INTREQ(0x8000 | (0x80 << nr));
+		INTREQ(0x8000 | (0x80 << nr));
 	    }
 	    cdp->intreq2 = 0;
 
@@ -397,7 +425,7 @@ static void audio_handler (int nr)
 	    cdp->datpt = cdp->nextdatpt;
 	    cdp->datptend = cdp->nextdatptend;
 
-	    cdp->current_sample = (uae_s8)(cdp->dat >> 8);
+	    cdp->current_sample = (uae_s8) (cdp->dat >> 8);
 
 	    if (cdp->dmaen && napnav)
 		cdp->data_written = 2;
@@ -438,6 +466,12 @@ void audio_reset (void)
     use_text_scope = 0;
 }
 
+void audio_set_write_audio_fname(const char *fname)
+{
+    write_audio_state = uade_write_audio_init(fname);
+    if (write_audio_state == NULL)
+	fprintf(stderr, "Could not open uade_write_audio\n");
+}
 
 /* This computes the 1st order low-pass filter term b0.
  * The a1 term is 1.0 - b0. The center frequency marks the -3 dB point. */
@@ -535,8 +569,10 @@ void update_audio (void)
 	float f;
 
 	for (i = 0; i < 4; i++) {
-	    if (audio_channel[i].state != 0 && best_evtime > audio_channel[i].evtime)
+	    if (audio_channel[i].state != 0 && (
+		    best_evtime > audio_channel[i].evtime)) {
 		best_evtime = audio_channel[i].evtime;
+	    }
 	}
 
 	/* next_sample_evtime >= 0 so floor() behaves as expected */
@@ -556,8 +592,12 @@ void update_audio (void)
 	/* sample_prehandler makes it possible to compute effects with
 	   accuracy of one bus cycle. sample_handler is only called when
 	   a sample is outputted. */
-	if (sample_prehandler != NULL)
+	if (sample_prehandler != NULL) {
 	    sample_prehandler(best_evtime);
+
+	    if (write_audio_state != NULL)
+		uade_write_audio_handler(best_evtime);
+	}
 
 	for (i = 0; i < 4; i++)
 	    audio_channel[i].evtime -= best_evtime;
@@ -589,6 +629,9 @@ void AUDxDAT (int nr, uae_u16 v)
 
     TEXT_SCOPE(cycles, nr, PET_DAT, v);
 
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_DAT, v);
+
     update_audio ();
 
     cdp->dat = v;
@@ -607,6 +650,9 @@ void AUDxLCH (int nr, uae_u16 v)
 {
     TEXT_SCOPE(cycles, nr, PET_LCH, v);
 
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_LCH, v);
+
     update_audio ();
 
     audio_channel[nr].lc = (audio_channel[nr].lc & 0xffff) | ((uae_u32)v << 16);
@@ -616,6 +662,9 @@ void AUDxLCH (int nr, uae_u16 v)
 void AUDxLCL (int nr, uae_u16 v)
 {
     TEXT_SCOPE(cycles, nr, PET_LCL, v);
+
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_LCL, v);
 
     update_audio ();
 
@@ -627,6 +676,9 @@ void AUDxPER (int nr, uae_u16 v)
 {
     TEXT_SCOPE(cycles, nr, PET_PER, v);
 
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_PER, v);
+
     update_audio ();
 
     if (v == 0)
@@ -637,7 +689,8 @@ void AUDxPER (int nr, uae_u16 v)
 	   machines. robocop customs use low values for example. */
 	if (!audperhack) {
 	    audperhack = 1;
-	    uadecore_send_debug("Eagleplayer inserted %d into aud%dper.", v, nr);
+	    uadecore_send_debug("Eagleplayer inserted %d into aud%dper.",
+				v, nr);
 	}
 	v = 16;
     }
@@ -648,6 +701,9 @@ void AUDxPER (int nr, uae_u16 v)
 void AUDxLEN (int nr, uae_u16 v)
 {
     TEXT_SCOPE(cycles, nr, PET_LEN, v);
+
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_LEN, v);
 
     update_audio ();
 
@@ -660,6 +716,9 @@ void AUDxVOL (int nr, uae_u16 v)
     int v2 = v & 64 ? 63 : v & 63;
 
     TEXT_SCOPE(cycles, nr, PET_VOL, v);
+
+    if (write_audio_state != NULL)
+	uade_write_audio_set_state(write_audio_state, nr, PET_VOL, v);
 
     update_audio ();
 

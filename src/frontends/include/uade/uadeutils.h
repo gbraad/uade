@@ -29,4 +29,16 @@ static inline void write_be_u32(void *s, uint32_t x)
 	ptr[3] = x;
 }
 
+static inline void write_be_u16(void *s, uint16_t x)
+{
+	uint8_t *ptr = (uint8_t *) s;
+	ptr[0] = (x >> 8);
+	ptr[1] = x;
+}
+
+static inline void write_be_s16(void *s, int16_t x)
+{
+	write_be_u16(s, (uint16_t) x);
+}
+
 #endif

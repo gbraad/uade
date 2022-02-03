@@ -1,5 +1,7 @@
 /* UADE - Unix Amiga Delitracker Emulator
  * Copyright 2000-2006, Heikki Orsila
+ *
+ * TODO: Indent to 4 spaces.
  */
 
 #include <assert.h>
@@ -38,6 +40,8 @@
 #include <uade/uadeutils.h>
 
 #define UADE_SAFE_BUFSIZE 4096
+
+#define UADE_MAX_PATH_LEN 1024
 
 enum print_help {
   OPTION_HELP = 1,
@@ -108,18 +112,18 @@ static char cachedfilename[PATH_MAX];
 
 static void add_ep_option(const char *s)
 {
-  size_t bufsize, l, i;
+    size_t bufsize, l, i;
 
-  bufsize = sizeof epoptions;
-  l = strlen(s) + 1;
-  i = epoptionsize;
+    bufsize = sizeof epoptions;
+    l = strlen(s) + 1;
+    i = epoptionsize;
 
-  if (strlcpy(&epoptions[i], s, bufsize - i) >= (bufsize - i)) {
-    fprintf(stderr, "Warning: uade eagleplayer option overflow: %s\n", s);
-    return;
-  }
+    if (strlcpy(&epoptions[i], s, bufsize - i) >= (bufsize - i)) {
+	fprintf(stderr, "Warning: uade eagleplayer option overflow: %s\n", s);
+	return;
+    }
 
-  epoptionsize += l;
+    epoptionsize += l;
 }
 
 
@@ -616,6 +620,12 @@ void uadecore_handle_r_state(void)
     case UADE_COMMAND_SET_RESAMPLING_MODE:
       uade_check_fix_string(um, 16);
       audio_set_resampler((char *) um->data);
+      break;
+
+    case UADE_COMMAND_SET_WRITE_AUDIO_FNAME:
+      // TODO: Fix path name string sizes for all messages
+      uade_check_fix_string(um, UADE_MAX_PATH_LEN);
+      audio_set_write_audio_fname((char *) um->data);
       break;
 
     case UADE_COMMAND_SPEED_HACK:

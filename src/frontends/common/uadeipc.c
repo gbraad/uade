@@ -30,7 +30,8 @@ void uade_check_fix_string(struct uade_msg *um, size_t maxlen)
 	assert(maxlen > 0);
 
 	if (um->size == 0 || um->size > maxlen) {
-		fprintf(stderr, "uade_check_fix_string: Bad string size: %u\n", um->size);
+		fprintf(stderr, "%s: Bad string size: %u\n", __func__,
+			um->size);
 		s[0] = 0;
 		return;
 	}
@@ -42,13 +43,14 @@ void uade_check_fix_string(struct uade_msg *um, size_t maxlen)
 	s[maxlen - 1] = 0;
 
 	if (len == maxlen) {
-		fprintf(stderr, "uade_check_fix_string: Too long a string\n");
+		fprintf(stderr, "%s: Too long a string\n", __func__);
 		return;
 	}
 
 	if (um->size != (len + 1)) {
-		fprintf(stderr, "uade_check_fix_string: String size does not match\n");
+		fprintf(stderr, "%s: String size does not match\n", __func__);
 		s[len] = 0;
+		return;
 	}
 }
 
@@ -76,7 +78,8 @@ static void copy_from_inputbuffer(void *dst, int bytes, struct uade_ipc *ipc)
 		exit(1);
 	}
 	memcpy(dst, ipc->inputbuffer, bytes);
-	memmove(ipc->inputbuffer, &ipc->inputbuffer[bytes], ipc->inputbytes - bytes);
+	memmove(ipc->inputbuffer, &ipc->inputbuffer[bytes],
+		ipc->inputbytes - bytes);
 	ipc->inputbytes -= bytes;
 }
 
@@ -118,17 +121,17 @@ struct uade_file *uade_receive_file(struct uade_ipc *ipc)
 	struct uade_file *f = calloc(1, sizeof(struct uade_file));
 
 	if (f == NULL) {
-		fprintf(stderr, "uade_receive_file(): No memory for struct\n");
+		fprintf(stderr, "%s: No memory for struct\n", __func__);
 		return NULL;
 	}
 
 	if (uade_receive_message(um, sizeof msgdata, ipc) <= 0) {
-		fprintf(stderr, "uade_receive_file(): Can not get meta\n");
+		fprintf(stderr, "%s: Can not get meta\n", __func__);
 		return NULL;
 	}
 	meta = (struct uade_msg_file *) &msgdata;
 	if (meta->msgtype != UADE_COMMAND_FILE) {
-		fprintf(stderr, "uade_receive_file(): Expected UADE_COMMAND_FILE\n");
+		fprintf(stderr, "%s: Expected UADE_COMMAND_FILE\n", __func__);
 		return NULL;
 	}
 
@@ -317,6 +320,12 @@ int uade_send_file(const struct uade_file *f, struct uade_ipc *ipc)
 	return 0;
 }
 
+static int sending_in_r_state_error(void)
+{
+	fprintf(stderr, "protocol error: sending in R state is forbidden\n");
+	return -1;
+}
+
 int uade_send_message(struct uade_msg *um, struct uade_ipc *ipc)
 {
 	uint32_t size = um->size;
@@ -324,8 +333,7 @@ int uade_send_message(struct uade_msg *um, struct uade_ipc *ipc)
 	if (ipc->state == UADE_INITIAL_STATE) {
 		ipc->state = UADE_S_STATE;
 	} else if (ipc->state == UADE_R_STATE) {
-		fprintf(stderr, "protocol error: sending in R state is forbidden\n");
-		return -1;
+		return sending_in_r_state_error();
 	}
 	if (!valid_message(um)) {
 		fprintf(stderr, "uadeipc: Tried to send an invalid message\n");
@@ -355,7 +363,8 @@ int uade_send_short_message(enum uade_msgtype msgtype, struct uade_ipc *ipc)
 	return 0;
 }
 
-int uade_send_string(enum uade_msgtype com, const char *str, struct uade_ipc *ipc)
+int uade_send_string(enum uade_msgtype com, const char *str,
+		     struct uade_ipc *ipc)
 {
 	uint32_t size = strlen(str) + 1;
 	struct uade_msg um = {.msgtype = ntohl(com), .size = ntohl(size)};
@@ -363,8 +372,7 @@ int uade_send_string(enum uade_msgtype com, const char *str, struct uade_ipc *ip
 	if (ipc->state == UADE_INITIAL_STATE) {
 		ipc->state = UADE_S_STATE;
 	} else if (ipc->state == UADE_R_STATE) {
-		fprintf(stderr, "protocol error: sending in R state is forbidden\n");
-		return -1;
+		return sending_in_r_state_error();
 	}
 
 	if ((sizeof(um) + size) > UADE_MAX_MESSAGE_SIZE)

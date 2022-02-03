@@ -150,6 +150,7 @@ enum uade_option {
 	UC_USE_TEXT_SCOPE,
 	UC_VERBOSE,
 	UC_AO_OPTION,
+	UC_WRITE_AUDIO_FILE,
 };
 
 /* Audio effects */
@@ -562,6 +563,7 @@ int uade_rmc_record_file(struct bencode *rmc, const char *name,
 			 const void *data, size_t len);
 
 size_t uade_atomic_fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+size_t uade_atomic_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 /*
  * Create a 'struct uade_file' that is used to present and contain name

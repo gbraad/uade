@@ -23,6 +23,24 @@ size_t uade_atomic_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	return readmemb;
 }
 
+size_t uade_atomic_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	uint8_t *dest = ptr;
+	size_t writememb = 0;
+	size_t ret;
+
+	while (writememb < nmemb) {
+		ret = fwrite(dest, size, nmemb - writememb, stream);
+		if (ret == 0 && ferror(stream))
+			break;
+		writememb += ret;
+		dest += size * ret;
+	}
+
+	assert(writememb <= nmemb);
+	return writememb;
+}
+
 void *uade_read_file(size_t *returned_fsize, const char *filename)
 {
 	FILE *f;
