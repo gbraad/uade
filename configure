@@ -38,6 +38,9 @@ if test -n "$LDFLAGS"; then
     echo "Adding $ARCHLIBS to ARCHLIBS"
 fi
 
+PYTHON_INTERPRETER="$(which "python3")"
+PYTHON_SETUP_ARGS=""
+
 debug_flags="-g"
 packageprefix=""
 bencodetoolsprefix=""
@@ -49,6 +52,7 @@ useuadefs="no"
 useuade123="yes"
 useuadecore="yes"
 usescore="no"
+usewriteaudio="yes"
 
 pkgrequirements="ao"
 textscope="no"
@@ -60,6 +64,7 @@ set_all_no() {
     useuade123="no"
     useuadecore="no"
     usescore="no"
+    usewriteaudio="no"
 }
 
 for opt in "$@" ; do
@@ -166,6 +171,14 @@ for opt in "$@" ; do
 		useuadefs="yes"
 		;;
 
+	--without-write-audio)
+		usewriteaudio="no"
+		;;
+	--only-write-audio)
+		set_all_no
+		usewriteaudio="yes"
+		;;
+
 # Miscellaneous options
 	--n900)
 	        n900="yes"
@@ -198,6 +211,7 @@ for opt in "$@" ; do
 		echo " --without-libuade      Do not compile libuade"
 		echo " --without-uade123      Do not compile uade123"
 		echo " --without-uadecore     Do not compile uadecore. This is useful for"
+		echo " --without-write-audio     Do not compile write audio"
 		echo "                        distribution makers who want to compile new frontends"
 		echo "                        without re-compiling the emulator binary."
 		echo " --without-uadefs       Do not compile uadefs filesystem"
@@ -205,6 +219,7 @@ for opt in "$@" ; do
 		echo " --only-uade123         Compile only uade123 plugin"
 		echo " --only-uadecore        Compile only uadecore"
 		echo " --only-uadefs          Compile only uadefs plugin"
+		echo " --only-write-audio     Compile only write audio"
 		echo
 		echo "Other:"
 		echo " --n900                 Set useful parameters for Nokia N900."
@@ -341,6 +356,7 @@ else
     if test -z "$prefix"; then
 	prefix="$HOME"
     fi
+    PYTHON_SETUP_ARGS="--user"
 fi
 
 uadedatadir="$prefix/share/uade"
@@ -569,6 +585,7 @@ echo "libuade                                 : $uselibuade"
 echo "uadecore                                : $useuadecore"
 echo "uade123                                 : $useuade123"
 echo "uadefs                                  : $useuadefs"
+echo "write audio                             : $usewriteaudio"
 echo "Text scope support                      : $textscope"
 echo "bencode-tools prefix                    : $bencodetoolsprefix"
 echo "vasm (to compile score)                 : ${VASM}"
@@ -579,6 +596,7 @@ uadecorerule=""
 uade123rule=""
 uadefsrule=""
 scorerule=""
+writeaudiorule=""
 
 if test "$uselibuade" = "yes" ; then
     libuaderule="libuade"
@@ -595,10 +613,13 @@ fi
 if test "$usescore" = "yes" ; then
     scorerule="score"
 fi
+if test "$usewriteaudio" = "yes" ; then
+    writeaudiorule="writeaudio"
+fi
 
 compilerules="uadesimple"
 installrules=""
-for component in $libuaderule $uadecorerule $uade123rule $uadefsrule $scorerule ; do
+for component in $libuaderule $uadecorerule $uade123rule $uadefsrule $scorerule $writeaudiorule ; do
     compilerules="$compilerules $component"
     installrules="$installrules $component""install"
 done
@@ -634,6 +655,8 @@ replace_with_sed() {
 	-e "s|{UADECORENAME}|$UADECORENAME|g" \
 	-e "s|{UADE123NAME}|$UADE123NAME|g" \
 	-e "s|{PKGCONFIGDIR}|$pkgconfigdir|g" \
+	-e "s|{PYTHON_SETUP_ARGS}|${PYTHON_SETUP_ARGS}|g" \
+	-e "s|{PYTHON_INTERPRETER}|${PYTHON_INTERPRETER}|g" \
 	"$@"
 }
 

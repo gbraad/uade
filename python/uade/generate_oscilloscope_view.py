@@ -4,7 +4,7 @@ import os.path
 import subprocess
 import tempfile
 
-import write_audio
+from . import write_audio
 
 
 class ArgumentError(Exception):
@@ -48,6 +48,8 @@ def main():
         else:
             uade123_arg_list.extend((key, str(value)))
 
+    retcode = 0
+
     for songfile in args.files:
         with tempfile.TemporaryDirectory(dir=args.target_dir) as tmpdir:
             bname = os.path.basename(songfile)
@@ -60,6 +62,7 @@ def main():
                 stdout=subprocess.DEVNULL)
             if cp.returncode != 0:
                 print('Failed to play {}'.format(songfile))
+                retcode = 1
                 break
             wavefile = os.path.join(tmpdir, bname + '.wav')
 
@@ -88,7 +91,6 @@ def main():
                     cp.stdout.decode(), cp.stderr.decode()))
                 print()
                 print('Failed to create video for {}'.format(songfile))
+                retcode = 1
 
-
-if __name__ == '__main__':
-    main()
+    return retcode

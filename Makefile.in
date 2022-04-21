@@ -2,6 +2,7 @@
 
 MAKE = {MAKE}
 
+BINDIR = $(DESTDIR){PACKAGEPREFIX}{BINDIR}
 DATADIR = $(DESTDIR){PACKAGEPREFIX}{DATADIR}
 MANDIR = $(DESTDIR){PACKAGEPREFIX}{MANDIR}
 
@@ -70,6 +71,11 @@ soundcheck:
 	@ echo "### UADE should be playing now 'AHX.Cruisin'"
 	@ echo ""
 	src/frontends/uade123/$(UADE123NAME) --basedir=. -S amigasrc/score/score -P players/AbyssHighestExperience songs/AHX.Cruisin -u src/uadecore
+
+writeaudioinstall:
+	{PYTHON_INTERPRETER} setup.py install {PYTHON_SETUP_ARGS}
+	install -m 755 write_audio/generate_amiga_oscilloscope_view "$(BINDIR)"/
+
 
 install:	$(INSTALL_RULES)
 	@echo
