@@ -637,7 +637,7 @@ replace_with_sed() {
 	"$@"
 }
 
-for file in Makefile.in src/Makefile.in src/frontends/*/Makefile.in src/frontends/mod2ogg/mod2ogg2.sh.in ; do
+for file in Makefile.in src/Makefile.in src/frontends/*/Makefile.in src/frontends/mod2ogg/mod2ogg2.sh.in write_audio/Makefile.in ; do
     dst="`echo $file |sed -e "s|\.in||"`"
     replace_with_sed "$file" > "$dst"
 done

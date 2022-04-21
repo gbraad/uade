@@ -239,7 +239,7 @@ def _init_globals(args):
     PIXEL_TICKS = FRAME_TICKS // SAMPLES_PER_FRAME
 
 
-def main():
+def main(main_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs=1)
     parser.add_argument('--fps', type=int, default=50)
@@ -251,7 +251,7 @@ def main():
     parser.add_argument('--target-dir', required=True)
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--wave', required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(args=main_args)
 
     assert os.path.isdir(args.target_dir)
     assert args.fps > 0
