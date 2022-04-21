@@ -242,6 +242,7 @@ def _init_globals(args):
 def main(main_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs=1)
+    parser.add_argument('--batch', action='store_true')
     parser.add_argument('--fps', type=int, default=50)
     parser.add_argument('--image-prefix', default='output_')
     parser.add_argument('--image-format', default='png')
@@ -267,7 +268,8 @@ def main(main_args=None):
 
     HEADER_SIZE = 16
     FRAME_SIZE = 12
-    progress_bar = tqdm(total=reg_file_size)
+
+    progress_bar = tqdm(total=reg_file_size, disable=args.batch)
 
     header = reg_file.read(HEADER_SIZE)
     progress_bar.update(len(header))
