@@ -72,6 +72,9 @@ soundcheck:
 	@ echo ""
 	src/frontends/uade123/$(UADE123NAME) --basedir=. -S amigasrc/score/score -P players/AbyssHighestExperience songs/AHX.Cruisin -u src/uadecore
 
+writeaudio:
+	@true
+
 writeaudioinstall:
 	{PYTHON_INTERPRETER} setup.py install {PYTHON_SETUP_ARGS}
 	install -m 755 write_audio/generate_amiga_oscilloscope_view "$(BINDIR)"/
