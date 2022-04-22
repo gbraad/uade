@@ -1,3 +1,8 @@
+# TODO:
+#
+# * Try SAMPLES_PER_FRAME == 640 and PIXELS_PER_SAMPLE == 2 so that all data
+#   can be displayed on maximum DMA sampling rate.
+
 import argparse
 from collections import deque
 import os
@@ -14,8 +19,9 @@ PIXELS_PER_SAMPLE = 4
 assert (SAMPLES_PER_FRAME * PIXELS_PER_SAMPLE) == 1280
 
 SOUNDTICKS_PAL = 3546895
-FRAME_TICKS = None
-PIXEL_TICKS = None
+AMIGA_FRAME_TICKS = None
+VIDEO_FRAME_TICKS = None
+AMIGA_PIXEL_TICKS = None
 
 MARGIN = 8
 VERTICAL_DIM = 720 // 4 - MARGIN
@@ -45,11 +51,11 @@ def integrate(time_window, channel, args):
     signal = []
     i = 0
     while i < len(time_window):
-        span = time_window[i:(i + PIXEL_TICKS)]
+        span = time_window[i:(i + AMIGA_PIXEL_TICKS)]
         x = statistics.mean(span) / (64 * 128)
         assert x >= -1.0 and x <= 1.0
         signal.append(x)
-        i += PIXEL_TICKS
+        i += AMIGA_PIXEL_TICKS
 
     trigger_state = 0
 
@@ -84,12 +90,16 @@ class Channel:
         self.time_window.extend([self.value] * tdelta)
 
     def poll_time_window(self):
-        if len(self.time_window) < (2 * FRAME_TICKS):
+        if len(self.time_window) < (2 * AMIGA_FRAME_TICKS):
             return None
 
-        tw = self.time_window[:(2 * FRAME_TICKS)]
-        self.time_window = self.time_window[FRAME_TICKS:]
-        return tw
+        # The returned time window is Paula outputs from two Amiga frames
+        time_window = self.time_window[:(2 * AMIGA_FRAME_TICKS)]
+
+        # Drop output video frame time equivalent of Paula outputs
+        self.time_window = self.time_window[VIDEO_FRAME_TICKS:]
+
+        return time_window
 
 
 class AudioChannels:
@@ -234,16 +244,17 @@ def _advance_time(audio_channels: AudioChannels, tdelta: int, args):
 
 
 def _init_globals(args):
-    global FRAME_TICKS, PIXEL_TICKS
-    FRAME_TICKS = SOUNDTICKS_PAL // args.fps
-    PIXEL_TICKS = FRAME_TICKS // SAMPLES_PER_FRAME
+    global AMIGA_FRAME_TICKS, AMIGA_PIXEL_TICKS, VIDEO_FRAME_TICKS
+    AMIGA_FRAME_TICKS = SOUNDTICKS_PAL // 50
+    AMIGA_PIXEL_TICKS = AMIGA_FRAME_TICKS // SAMPLES_PER_FRAME
+    VIDEO_FRAME_TICKS = SOUNDTICKS_PAL // args.fps
 
 
 def main(main_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('file', nargs=1)
     parser.add_argument('--batch', action='store_true')
-    parser.add_argument('--fps', type=int, default=50)
+    parser.add_argument('--fps', type=int, default=60, help='Set framerate')
     parser.add_argument('--image-prefix', default='output_')
     parser.add_argument('--image-format', default='png')
     parser.add_argument('--manual', action='store_true')

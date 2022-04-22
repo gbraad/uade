@@ -6,8 +6,7 @@ view videos with FFMPEG. Usage:
 $ python3 generate_oscilloscope_view.py --target-dir /video_dir ../songs/AHX.Cruisin
 ```
 
-A generated video has 50 frames per second by default.
-For publishing in streaming services, consider using --fps 60 argument.
+A generated video is 720p @ 60 frames per second by default.
 
 # Dependencies
 
@@ -17,3 +16,7 @@ Tools:
 Python 3 libraries:
 * Python Imaging Library (apt install python3-pil)
 * tqdm (apt install python3-tqdm)
+
+# Limitations
+
+Produces only 720p videos.

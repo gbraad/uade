@@ -78,8 +78,19 @@ def main() -> int:
     parser.add_argument('--target-dir', '-t', required=True)
     parser.add_argument('--ffmpeg', default='ffmpeg', help='Path to ffmpeg')
     parser.add_argument('files', metavar='FILE', nargs='*')
-    parser.add_argument('--fps', type=int, default=50)
-    parser.add_argument('--multiprocessing', action='store_true')
+    parser.add_argument(
+        '--fps', type=int, default=60,
+        help=('Set framerate. Recommended values are 50, 60 and anything '
+              'higher that is supported by the display and streaming '
+              'technology.'))
+    parser.add_argument(
+        '--multiprocessing', action='store_true',
+        help='Encode videos in parallel with all threads available.')
+    parser.add_argument(
+        '--parallelism', type=int,
+        help=('Sets the amount of parallelism encoded. '
+              'Same as --multiprocessing but specifies the amount of '
+              'parallelism explicitly.'))
     parser.add_argument('--uade123', default='uade123', help='Path to uade123')
     parser.add_argument(
         '--uade123-args', type=ast.literal_eval, default={},
@@ -111,9 +122,15 @@ def main() -> int:
         else:
             uade123_arg_list.extend((key, str(value)))
 
-    num_processes = 1
-    if args.multiprocessing:
+    if args.parallelism is not None:
+        if args.parallelism < 1:
+            raise ArgumentError('Invalid parallelism: {}'.format(
+                args.parallelism))
+        num_processes = args.parallelism
+    elif args.multiprocessing:
         num_processes = cpu_count()
+    else:
+        num_processes = 1
 
     write_audio_options_list = []
     if num_processes > 1:
