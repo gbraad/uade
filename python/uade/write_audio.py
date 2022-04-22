@@ -1,8 +1,3 @@
-# TODO:
-#
-# * Try SAMPLES_PER_FRAME == 640 and PIXELS_PER_SAMPLE == 2 so that all data
-#   can be displayed on maximum DMA sampling rate.
-
 import argparse
 from collections import deque
 import os
@@ -12,10 +7,10 @@ import wave
 from tqdm import tqdm
 from typing import List
 
-NUM_CHANNELS = 4
+NUM_AMIGA_CHANNELS = 4
 
-SAMPLES_PER_FRAME = 320
-PIXELS_PER_SAMPLE = 4
+SAMPLES_PER_FRAME = 640
+PIXELS_PER_SAMPLE = 2
 assert (SAMPLES_PER_FRAME * PIXELS_PER_SAMPLE) == 1280
 
 SOUNDTICKS_PAL = 3546895
@@ -24,7 +19,7 @@ VIDEO_FRAME_TICKS = None
 AMIGA_PIXEL_TICKS = None
 
 MARGIN = 8
-VERTICAL_DIM = 720 // 4 - MARGIN
+VERTICAL_DIM = 720 // NUM_AMIGA_CHANNELS - MARGIN
 
 PAULA_EVENT_VOL = 1
 PAULA_EVENT_PER = 2
@@ -106,7 +101,7 @@ class AudioChannels:
     def __init__(self, normalisation_length: int):
         assert normalisation_length >= 0
         self.channels = []
-        for i in range(NUM_CHANNELS):
+        for i in range(NUM_AMIGA_CHANNELS):
             self.channels.append(Channel(i))
 
         self.normalisation_length = normalisation_length
@@ -126,7 +121,7 @@ class AudioChannels:
 def _handle_paula_event(audio_channels: AudioChannels, outputs, wave_file,
                         frame, args):
     channel_nr = frame[4]
-    assert channel_nr >= 0 and channel_nr < NUM_CHANNELS
+    assert channel_nr >= 0 and channel_nr < NUM_AMIGA_CHANNELS
     event_type = frame[5]
     event_value = int.from_bytes(frame[6:8], 'big')
     channel = audio_channels.channels[channel_nr]
@@ -173,7 +168,7 @@ class FrameImage:
             return
         self.im = Image.new('RGB',
                             (SAMPLES_PER_FRAME * PIXELS_PER_SAMPLE,
-                             (VERTICAL_DIM + MARGIN) * NUM_CHANNELS))
+                             (VERTICAL_DIM + MARGIN) * NUM_AMIGA_CHANNELS))
         self.px = self.im.load()  # For drawing pixels
         self.im_line = ImageDraw.Draw(self.im)  # For drawing lines
 
@@ -227,9 +222,9 @@ def _advance_time(audio_channels: AudioChannels, tdelta: int, args):
             abs_max = max(abs_max, max([abs(x) for x in signal]))
             signals.append((channel, signal))
 
-    assert len(signals) == 0 or len(signals) == NUM_CHANNELS
+    assert len(signals) == 0 or len(signals) == NUM_AMIGA_CHANNELS
 
-    if len(signals) == NUM_CHANNELS:
+    if len(signals) == NUM_AMIGA_CHANNELS:
         audio_channels.add_normaliser(1.0 / abs_max)
 
     normaliser = audio_channels.get_normaliser()
