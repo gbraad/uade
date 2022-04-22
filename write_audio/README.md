@@ -6,6 +6,9 @@ view videos with FFMPEG. Usage:
 $ python3 generate_oscilloscope_view.py --target-dir /video_dir ../songs/AHX.Cruisin
 ```
 
+A generated video has 50 frames per second by default.
+For publishing in streaming services, consider using --fps 60 argument.
+
 # Dependencies
 
 Tools:
