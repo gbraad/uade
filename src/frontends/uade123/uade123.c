@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 	char tmpstr[PATH_MAX + 256];
 	long subsong = -1;
 	FILE *listfile = NULL;
-	int have_modules = 0;
+	int song_arguments_were_given = 0;
 	int ret;
 	char *endptr;
 	struct uade_config *uc_cmdline = NULL;
@@ -184,6 +184,8 @@ int main(int argc, char *argv[])
 	int randomplay = 0;
 
 	struct uade_state *state;
+
+	int returncode = 0;
 
 	enum {
 		OPT_FIRST = 0x1FFF,
@@ -333,7 +335,7 @@ int main(int argc, char *argv[])
 		case 'P':
 			uade_config_set_option(uc_cmdline, UC_PLAYER_FILE,
 					       optarg);
-			have_modules = 1;
+			song_arguments_were_given = 1;
 			break;
 			
 		case 'r':
@@ -493,14 +495,16 @@ int main(int argc, char *argv[])
 		}
 		fclose(listfile);
 		listfile = NULL;
-		have_modules = 1;
+		song_arguments_were_given = 1;
 	}
 
 	/* Read play list from command line parameters */
 	for (i = optind; i < argc; i++) {
 		/* Play files */
-		playlist_add(&uade_playlist, argv[i], recursivemode);
-		have_modules = 1;
+		if (!playlist_add(&uade_playlist, argv[i], recursivemode))
+			returncode = 1;
+
+		song_arguments_were_given = 1;
 	}
 
 	if (scanmode) {
@@ -516,7 +520,7 @@ int main(int argc, char *argv[])
 	if (randomplay)
 		playlist_randomize(&uade_playlist);
 
-	if (have_modules == 0) {
+	if (!song_arguments_were_given) {
 		print_help();
 		exit(0);
 	}
@@ -540,8 +544,8 @@ int main(int argc, char *argv[])
 		const struct uade_song_info *info;
 		size_t playerfsize = 0;
 
-		if (!playlist_get(modulename, sizeof modulename, &uade_playlist,
-				  plistdir))
+		if (!playlist_get(modulename, sizeof modulename,
+				  &uade_playlist, plistdir))
 			break;
 
 		plistdir = UADE_PLAY_NEXT;
@@ -549,6 +553,7 @@ int main(int argc, char *argv[])
 		uade_debug(state, "\n");
 
 		if (!uade_is_our_file(modulename, state)) {
+			returncode = 1;
 			fprintf(stderr, "Unknown format: %s\n", modulename);
 			continue;
 		}
@@ -557,6 +562,7 @@ int main(int argc, char *argv[])
 		if (ret < 0) {
 			goto cleanup;
 		} else if (ret == 0) {
+			returncode = 1;
 			fprintf(stderr, "Can not play %s\n", modulename);
 			continue;
 		}
@@ -589,7 +595,7 @@ int main(int argc, char *argv[])
 
 	cleanup(state);
 	free(uc_cmdline);
-	return 0;
+	return returncode;
   
 cleanup:
 	cleanup(state);

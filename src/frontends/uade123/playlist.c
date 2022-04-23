@@ -169,6 +169,7 @@ static void *recursive_func(const char *file, enum uade_wtype wtype, void *pl)
 	return NULL;
 }
 
+/* Returns 0 on error */
 int playlist_add(struct playlist *pl, const char *name, int recursive)
 {
 	int ret = 0;
@@ -177,14 +178,14 @@ int playlist_add(struct playlist *pl, const char *name, int recursive)
 
 	if (path == NULL) {
 		fprintf(stderr, "playlist_add: No memory for path.\n");
-		goto out;
+		goto error;
 	}
 
 	if (!pl->valid)
-		goto out;
+		goto error;
 
 	if (stat(path, &st))
-		goto out;
+		goto error;
 
 	if (S_ISREG(st.st_mode)) {
 		/* Is a regular file */
@@ -223,6 +224,10 @@ int playlist_add(struct playlist *pl, const char *name, int recursive)
 out:
 	free(path);
 	return ret;
+
+error:
+	free(path);
+	return 0;
 }
 
 static int pl_get_random(char **s, int *len, struct playlist *pl)

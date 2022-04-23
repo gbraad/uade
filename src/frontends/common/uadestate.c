@@ -1266,6 +1266,7 @@ static int uade_play_internal(struct uade_file *module, int subsong,
 	memset(song, 0, sizeof song[0]);
 	song->state = UADE_STATE_INVALID;
 
+	/* TODO: Fix this, passing module == NULL makes no sense */
 	if (module == NULL)
 		return -1;
 
