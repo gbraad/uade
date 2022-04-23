@@ -1631,16 +1631,11 @@ static void REGPARAM2 custom_wput (uaecptr addr, uae_u32 value)
 
 static void REGPARAM2 custom_bput (uaecptr addr, uae_u32 value)
 {
-    static int warned = 0;
     /* Is this correct now? (There are people who bput things to the upper byte of AUDxVOL). */
     uae_u16 rval = (value << 8) | (value & 0xFF);
     //    uae_u16 rval = value & 0xFF;
     //    addr=(uaecptr) (((char*) addr)-1);
     custom_wput(addr, rval);
-    if (!warned) {
-        warned++;
-	fprintf(stderr, "uade: Byte put to custom register (0x%x to $%x)\n", rval, addr);
-    }
 }
 
 static void REGPARAM2 custom_lput(uaecptr addr, uae_u32 value)
