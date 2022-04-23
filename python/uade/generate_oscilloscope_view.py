@@ -66,10 +66,11 @@ def _process_songfile(songfile: str,
     return 0
 
 
-def _generate_video(*pos, **kwargs) -> int:
+def _generate_video(*pos) -> int:
     try:
-        return _process_songfile(*pos, **kwargs)
-    except Exception:
+        return _process_songfile(*pos)
+    except Exception as e:
+        print('Job {} threw an exception: {}'.format(pos, e))
         return 2
 
 
@@ -87,10 +88,13 @@ def main() -> int:
         '--multiprocessing', action='store_true',
         help='Encode videos in parallel with all threads available.')
     parser.add_argument(
-        '--parallelism', type=int,
+        '--parallelism', '-p', type=int,
         help=('Sets the amount of parallelism encoded. '
               'Same as --multiprocessing but specifies the amount of '
               'parallelism explicitly.'))
+    parser.add_argument(
+        '--recursive', '-r', action='store_true',
+        help='Scan directories recursively')
     parser.add_argument('--uade123', default='uade123', help='Path to uade123')
     parser.add_argument(
         '--uade123-args', type=ast.literal_eval, default={},
@@ -137,17 +141,27 @@ def main() -> int:
         write_audio_options_list.append('--batch')
 
     jobs = []
-    for songfile in args.files:
-        jobs.append((songfile, args, uade123_arg_list,
-                     write_audio_options_list))
+    for path in args.files:
+        if os.path.isdir(path):
+            if args.recursive:
+                for dirpath, dirnames, filenames in os.walk(path):
+                    for filename in filenames:
+                        songfile = os.path.join(dirpath, filename)
+                        jobs.append((songfile, args, uade123_arg_list,
+                                     write_audio_options_list))
+            else:
+                print('Ignoring {} because it is a directory. Use -r to scan '
+                      'directories.'.format(path))
+                return 1
+        else:
+            jobs.append((path, args, uade123_arg_list,
+                         write_audio_options_list))
 
     with Pool(processes=num_processes) as pool:
-        retcodes = pool.starmap(_generate_video, jobs)
+        job_retcodes = pool.starmap(_generate_video, jobs)
 
-    retcode = 0
-    for new_retcode in retcodes:
-        if new_retcode != 0:
-            retcode = new_retcode
-            break
+    for job_retcode in job_retcodes:
+        if job_retcode != 0:
+            return job_retcode
 
-    return retcode
+    return 0
