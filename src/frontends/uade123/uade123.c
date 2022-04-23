@@ -51,7 +51,6 @@ static int debug_trigger;
 
 static void print_help(void);
 static void setup_sighandlers(void);
-static void trivial_sigint(int sig);
 static void cleanup(struct uade_state *state);
 
 static char *xfgets(char *s, int size, FILE *stream)
@@ -724,11 +723,16 @@ void print_action_keys(void)
 		" 'z'           Previous subsong\n");
 }
 
+static void debug_sigint(int sig)
+{
+	debug_trigger = 1;
+}
 
 static void setup_sighandlers(void)
 {
-	struct sigaction act = {.sa_handler = trivial_sigint};
-	if (sigaction(SIGINT, &act, NULL))
+	struct sigaction act = {.sa_handler = debug_sigint};
+
+	if (debug_mode && sigaction(SIGINT, &act, NULL))
 		uade_die_error("can not install signal handler SIGINT");
 }
 
@@ -736,30 +740,4 @@ static void cleanup(struct uade_state *state)
 {
 	uade_cleanup_state(state);
 	audio_close();
-}
-
-static void trivial_sigint(int sig)
-{
-	static struct timeval otv = {.tv_sec = 0, .tv_usec = 0};
-	struct timeval tv;
-
-	if (debug_mode) {
-		debug_trigger = 1;
-		return;
-	}
-
-	/*
-	 * Counts number of milliseconds between ctrl-c pushes, and terminates
-	 * the prog if they are less than 100 msecs apart.
-	 */
-	if (gettimeofday(&tv, NULL)) {
-		fprintf(stderr, "Gettimeofday() does not work.\n");
-		return;
-	}
-	if (otv.tv_sec) {
-		int msecs = (tv.tv_sec - otv.tv_sec) * 1000 + (tv.tv_usec - otv.tv_usec) / 1000;
-		if (msecs < 100)
-			exit(1);
-	}
-	otv = tv;
 }
