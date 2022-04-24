@@ -18,7 +18,8 @@ enum amigamsg {
 	AMIGAMSG_FILESIZE,
 	AMIGAMSG_TIME_CRITICAL,
 	AMIGAMSG_GET_INFO,
-	AMIGAMSG_START_OUTPUT,
+	AMIGAMSG_START_OUTPUT,  /* 17 */
+	AMIGAMSG_RESERVED_0,  /* 18: For an audio.device experiment */
 };
 
 #endif

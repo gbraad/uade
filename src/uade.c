@@ -306,248 +306,258 @@ static struct uade_file *lookup_amiga_file_cache(const char *filename)
 
 void uadecore_get_amiga_message(void)
 {
-  uae_u8 *ptr;
-  char *nameptr;
-  int x;
-  unsigned int mins, maxs, curs;
-  int status;
-  int src, dst, len;
-  size_t off;
-  char tmpstr[256];
-  char *srcstr, *dststr;
-  struct uade_file *f;
-  uint32_t *u32ptr;
-  uint8_t space[256];
-  struct uade_msg *um = (struct uade_msg *) space;
+	uae_u8 *ptr;
+	char *nameptr;
+	unsigned int mins, maxs, curs;
+	int status;
+	int src, dst, len;
+	size_t off;
+	char tmpstr[256];
+	char *srcstr, *dststr;
+	struct uade_file *f;
+	uint32_t *u32ptr;
+	uint8_t space[256];
+	struct uade_msg *um = (struct uade_msg *) space;
+	int x;
 
-  x = amiga_get_u32(SCORE_INPUT_MSG);  /* message type from amiga */
+	/* message type from amiga */
+	const int amigamsg = amiga_get_u32(SCORE_INPUT_MSG);
 
-  switch (x) {
+	switch (amigamsg) {
 
-  case AMIGAMSG_SONG_END:
-    uadecore_song_end("player", 0);
-    break;
+	case AMIGAMSG_SONG_END:
+		uadecore_song_end("player", 0);
+		break;
 
-  case AMIGAMSG_SUBSINFO:
-    mins = amiga_get_u32(SCORE_MIN_SUBSONG);
-    maxs = amiga_get_u32(SCORE_MAX_SUBSONG);
-    curs = amiga_get_u32(SCORE_CUR_SUBSONG);
-    /* Brain damage in TFMX BC Kid Despair */
-    if (maxs < mins) {
-      uadecore_send_debug("Odd subsongs. Eagleplayer reported (min, cur, max) == (%u, %u, %u)", mins, curs, maxs);
-      maxs = mins;
-    }
-    /* Brain damage in Bubble bobble custom */
-    if (curs > maxs) {
-      uadecore_send_debug("Odd subsongs. Eagleplayer reported (min, cur, max) == (%u, %u, %u)", mins, curs, maxs);
-      maxs = curs;
-    }
-    um->msgtype = UADE_REPLY_SUBSONG_INFO;
-    um->size = 12;
-    u32ptr = (uint32_t *) um->data;
-    u32ptr[0] = htonl(mins);
-    u32ptr[1] = htonl(maxs);
-    u32ptr[2] = htonl(curs);
-    if (uade_send_message(um, &uadecore_ipc)) {
-      fprintf(stderr, "uadecore: Could not send subsong info message.\n");
-      exit(1);
-    }
-    break;
+	case AMIGAMSG_SUBSINFO:
+		mins = amiga_get_u32(SCORE_MIN_SUBSONG);
+		maxs = amiga_get_u32(SCORE_MAX_SUBSONG);
+		curs = amiga_get_u32(SCORE_CUR_SUBSONG);
+		/* Brain damage in TFMX BC Kid Despair */
+		if (maxs < mins) {
+			uadecore_send_debug("Odd subsongs. Eagleplayer reported (min, cur, max) == (%u, %u, %u)", mins, curs, maxs);
+			maxs = mins;
+		}
+		/* Brain damage in Bubble bobble custom */
+		if (curs > maxs) {
+			uadecore_send_debug("Odd subsongs. Eagleplayer reported (min, cur, max) == (%u, %u, %u)", mins, curs, maxs);
+			maxs = curs;
+		}
+		um->msgtype = UADE_REPLY_SUBSONG_INFO;
+		um->size = 12;
+		u32ptr = (uint32_t *) um->data;
+		u32ptr[0] = htonl(mins);
+		u32ptr[1] = htonl(maxs);
+		u32ptr[2] = htonl(curs);
+		if (uade_send_message(um, &uadecore_ipc)) {
+			fprintf(stderr, "uadecore: Could not send subsong info message.\n");
+			exit(1);
+		}
+		break;
 
-  case AMIGAMSG_PLAYERNAME:
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
-    uade_send_string(UADE_REPLY_PLAYERNAME, tmpstr, &uadecore_ipc);
-    break;
+	case AMIGAMSG_PLAYERNAME:
+		strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+		uade_send_string(UADE_REPLY_PLAYERNAME, tmpstr, &uadecore_ipc);
+		break;
 
-  case AMIGAMSG_MODULENAME:
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
-    uade_send_string(UADE_REPLY_MODULENAME, tmpstr, &uadecore_ipc);
-    break;
+	case AMIGAMSG_MODULENAME:
+	strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+		uade_send_string(UADE_REPLY_MODULENAME, tmpstr, &uadecore_ipc);
+		break;
 
-  case AMIGAMSG_FORMATNAME:
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
-    uade_send_string(UADE_REPLY_FORMATNAME, tmpstr, &uadecore_ipc);
-    break;
+	case AMIGAMSG_FORMATNAME:
+		strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+		uade_send_string(UADE_REPLY_FORMATNAME, tmpstr, &uadecore_ipc);
+		break;
 
-  case AMIGAMSG_GENERALMSG:
-    uadecore_send_debug((char *) get_real_address(0x204));
-    break;
+	case AMIGAMSG_GENERALMSG:
+		uadecore_send_debug((char *) get_real_address(0x204));
+		break;
 
-  case AMIGAMSG_CHECKERROR:
-    uadecore_song_end("module check failed", 1);
-    break;
+	case AMIGAMSG_CHECKERROR:
+		uadecore_song_end("module check failed", 1);
+		break;
 
-  case AMIGAMSG_SCORECRASH:
-    if (uadecore_debug) {
-      fprintf(stderr, "uadecore: Score crashed.\n");
-      activate_debugger();
-      break;
-    }
-    uadecore_song_end("score crashed", 1);
-    break;
+	case AMIGAMSG_SCORECRASH:
+		if (uadecore_debug) {
+			fprintf(stderr, "uadecore: Score crashed.\n");
+			activate_debugger();
+			break;
+		}
+		uadecore_song_end("score crashed", 1);
+		break;
 
-  case AMIGAMSG_SCOREDEAD:
-     if (uadecore_debug) {
-      fprintf(stderr, "uadecore: Score is dead.\n"); 
-      activate_debugger();
-      break;
-    }
-     uadecore_song_end("score died", 1);
-    break;
+	case AMIGAMSG_SCOREDEAD:
+		if (uadecore_debug) {
+			fprintf(stderr, "uadecore: Score is dead.\n"); 
+			activate_debugger();
+			break;
+		}
+		uadecore_song_end("score died", 1);
+		break;
 
-  case AMIGAMSG_LOADFILE:
-    /*
-     * Load a file named at 0x204 (name pointer) to address pointed by
-     * 0x208 and insert the length to 0x20C.
-     * For example, R-Type (TFMX format) uses this.
-     */
-    src = amiga_get_u32(0x204);
-    if (!uade_valid_string(src)) {
-	    fprintf(stderr, "uadecore: Load name in invalid address range.\n");
-	    break;
-    }
-    nameptr = (char *) get_real_address(src);
-    f = lookup_amiga_file_cache(nameptr);
-    if (f == NULL) {
-	    uadecore_send_debug("load: request error: %s", nameptr);
-	    exit(1);
-    }
-    if (f->data == NULL) {
-	    /* File not found */
-	    uadecore_send_debug("load: file not found: %s", nameptr);
-	    break;
-    }
-    dst = amiga_get_u32(0x208);
-    len = uade_safe_copy(dst, f->data, f->size);
-    if (len == 0 && f->size > 0)
-	    uadecore_send_debug("load: too long a file to copy");
-    uade_put_long(0x20C, len);
-    uadecore_send_debug("load: %s ptr 0x%x size 0x%x", nameptr, dst, len);
-    break;
+	case AMIGAMSG_LOADFILE:
+		/*
+		 * Load a file named at 0x204 (name pointer) to address pointed by
+		 * 0x208 and insert the length to 0x20C.
+		 * For example, R-Type (TFMX format) uses this.
+		 */
+		src = amiga_get_u32(0x204);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: Load name in invalid address range.\n");
+			break;
+		}
+		nameptr = (char *) get_real_address(src);
+		f = lookup_amiga_file_cache(nameptr);
+		if (f == NULL) {
+			uadecore_send_debug("load: request error: %s", nameptr);
+			exit(1);
+		}
+		if (f->data == NULL) {
+			/* File not found */
+			uadecore_send_debug("load: file not found: %s", nameptr);
+			break;
+		}
+		dst = amiga_get_u32(0x208);
+		len = uade_safe_copy(dst, f->data, f->size);
+		if (len == 0 && f->size > 0)
+			uadecore_send_debug("load: too long a file to copy");
+		uade_put_long(0x20C, len);
+		uadecore_send_debug("load: %s ptr 0x%x size 0x%x", nameptr, dst, len);
+		break;
 
-  case AMIGAMSG_READ:
-    /* Used by "mdat.Crystal_Palace-1", for example */
-    src = amiga_get_u32(0x204);
-    if (!uade_valid_string(src)) {
-	    fprintf(stderr, "uadecore: Read name in invalid address range.\n");
-	    break;
-    }
-    nameptr = (char *) get_real_address(src);
-    f = lookup_amiga_file_cache(nameptr);
-    if (f == NULL) {
-	    uadecore_send_debug("read: request error: %s", nameptr);
-	    exit(1);
-    }
-    x = 0;
-    if (f->data != NULL) {
-	    dst = amiga_get_u32(0x208);
-	    off = amiga_get_u32(0x20C);
-	    len = amiga_get_u32(0x210);
-	    if (off >= f->size) {
-		    uadecore_send_debug("read: file offset over the file end");
-	    } else {
-		    size_t endpos = off + ((size_t) len);
-		    size_t tocopy = len;
-		    if (endpos > f->size)
-			    tocopy = f->size - off;
-		    x = uade_safe_copy(dst, f->data + off, tocopy);
-	    }
-	    uadecore_send_debug("read: %s dst 0x%x off 0x%x len 0x%x "
-				"bytesread 0x%x", nameptr, dst, off, len, x);
-    } else {
-	    uadecore_send_debug("read: file not found: %s", nameptr);
-    }
-    uade_put_long(0x214, x);
-    break;
+	case AMIGAMSG_READ:
+		/* Used by "mdat.Crystal_Palace-1", for example */
+		src = amiga_get_u32(0x204);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: Read name in invalid address range.\n");
+			break;
+		}
+		nameptr = (char *) get_real_address(src);
+		f = lookup_amiga_file_cache(nameptr);
+		if (f == NULL) {
+			uadecore_send_debug("read: request error: %s", nameptr);
+			exit(1);
+		}
 
-  case AMIGAMSG_FILESIZE:
-    /* Used by "mdat.Crystal_Palace-1", for example */
-    src = amiga_get_u32(0x204);
-    if (!uade_valid_string(src)) {
-      fprintf(stderr, "uadecore: Filesize name in invalid address range.\n");
-      break;
-    }
-    nameptr = (char *) get_real_address(src);
-    f = lookup_amiga_file_cache(nameptr);
-    if (f == NULL) {
-	    uadecore_send_debug("filesize: request error: %s", nameptr);
-	    exit(1);
-    }
-    len = 0;
-    x = 0;
-    if (f->data != NULL) {
-	    len = f->size;
-	    x = -1;
-	    uadecore_send_debug("filesize: file %s res 0x%x", nameptr, len);
-    } else {
-	    /* Note, f->size == -1 if file does not exist */
-	    uadecore_send_debug("filesize: file not found: %s", nameptr);
-    }
-    uade_put_long(0x208, len);
-    uade_put_long(0x20C, x);
-    break;
+		x = 0;
+		if (f->data != NULL) {
+			dst = amiga_get_u32(0x208);
+			off = amiga_get_u32(0x20C);
+			len = amiga_get_u32(0x210);
+			if (off >= f->size) {
+				uadecore_send_debug("read: file offset over the file end");
+			} else {
+				size_t endpos = off + ((size_t) len);
+				size_t tocopy = len;
+				if (endpos > f->size)
+					tocopy = f->size - off;
+				x = uade_safe_copy(dst, f->data + off, tocopy);
+			}
+			uadecore_send_debug("read: %s dst 0x%x off 0x%x len 0x%x "
+					    "bytesread 0x%x", nameptr, dst,
+					    off, len, x);
+		} else {
+			uadecore_send_debug("read: file not found: %s", nameptr);
+		}
+		uade_put_long(0x214, x);
+		break;
 
-  case AMIGAMSG_TIME_CRITICAL:
-    uadecore_time_critical = amiga_get_u32(0x204) ? 1 : 0;
-    if (speed_hack < 0) {
-      /* a negative value forbids use of speed hack */
-      uadecore_time_critical = 0;
-    }
-    break;
+	case AMIGAMSG_FILESIZE:
+		/* Used by "mdat.Crystal_Palace-1", for example */
+		src = amiga_get_u32(0x204);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: Filesize name in invalid address range.\n");
+			break;
+		}
+		nameptr = (char *) get_real_address(src);
+		f = lookup_amiga_file_cache(nameptr);
+		if (f == NULL) {
+			uadecore_send_debug("filesize: request error: %s", nameptr);
+			exit(1);
+		}
+		len = 0;
+		x = 0;
+		if (f->data != NULL) {
+			len = f->size;
+			x = -1;
+			uadecore_send_debug("filesize: file %s res 0x%x",
+					    nameptr, len);
+		} else {
+			/* Note, f->size == -1 if file does not exist */
+			uadecore_send_debug("filesize: file not found: %s", nameptr);
+		}
+		uade_put_long(0x208, len);
+		uade_put_long(0x20C, x);
+		break;
 
-  case AMIGAMSG_GET_INFO:
-    src = amiga_get_u32(0x204);
-    dst = amiga_get_u32(0x208);
-    len = amiga_get_u32(0x20C);
-    if (!uade_valid_string(src)) {
-      fprintf(stderr, "uadecore: get info: Invalid src: 0x%x\n", src);
-      break;
-    }
-    if (len <= 0) {
-      fprintf(stderr, "uadecore: get info: len = %d\n", len);
-      break;
-    }
-    if (!valid_address(dst, len)) {
-      fprintf(stderr, "uadecore: get info: Invalid dst: 0x%x\n", dst);
-      break;
-    }
-    srcstr = (char *) get_real_address(src);
-    dststr = (char *) get_real_address(dst);
-    uadecore_send_debug("score issued an info request: %s (maxlen %d)", srcstr, len);
-    len = get_info_for_ep(dststr, srcstr, len);
-    /* Send printable debug */
-    do {
-      size_t i;
-      size_t maxspace = sizeof space;
-      if (len <= 0) {
-	maxspace = 1;
-      } else {
-	if (len < maxspace)
-	  maxspace = len;
-      }
-      for (i = 0; i < maxspace; i++) {
-	space[i] = dststr[i];
-	if (space[i] == 0)
-	  space[i] = ' ';
-      }
-      if (i < maxspace) {
-	space[i] = 0;
-      } else {
-	space[maxspace - 1] = 0;
-      }
-      uadecore_send_debug("reply to score: %s (total len %d)", space, len);
-    } while (0);
-    uade_put_long(0x20C, len);
-    break;
+	case AMIGAMSG_TIME_CRITICAL:
+		uadecore_time_critical = amiga_get_u32(0x204) ? 1 : 0;
+		if (speed_hack < 0) {
+			/* a negative value forbids use of speed hack */
+			uadecore_time_critical = 0;
+		}
+		break;
 
-  case AMIGAMSG_START_OUTPUT:
-    uadecore_audio_output = 1;
-    break;
+	case AMIGAMSG_GET_INFO:
+		src = amiga_get_u32(0x204);
+		dst = amiga_get_u32(0x208);
+		len = amiga_get_u32(0x20C);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: get info: Invalid src: 0x%x\n", src);
+			break;
+		}
+		if (len <= 0) {
+			fprintf(stderr, "uadecore: get info: len = %d\n", len);
+			break;
+		}
+		if (!valid_address(dst, len)) {
+			fprintf(stderr, "uadecore: get info: Invalid dst: 0x%x\n", dst);
+			break;
+		}
+		srcstr = (char *) get_real_address(src);
+		dststr = (char *) get_real_address(dst);
+		uadecore_send_debug("score issued an info request: %s (maxlen %d)", srcstr, len);
+		len = get_info_for_ep(dststr, srcstr, len);
+		/* Send printable debug */
+		do {
+			size_t i;
+			size_t maxspace = sizeof space;
+			if (len <= 0) {
+				maxspace = 1;
+			} else {
+				if (len < maxspace)
+					maxspace = len;
+			}
+			for (i = 0; i < maxspace; i++) {
+				space[i] = dststr[i];
+				if (space[i] == 0)
+					space[i] = ' ';
+			}
+			if (i < maxspace) {
+				space[i] = 0;
+			} else {
+				space[maxspace - 1] = 0;
+			}
+			uadecore_send_debug("reply to score: %s (total len %d)", space, len);
+		} while (0);
+		uade_put_long(0x20C, len);
+		break;
 
-  default:
-    fprintf(stderr,"uadecore: Unknown message from score (%d)\n", x);
-    break;
-  }
+	case AMIGAMSG_START_OUTPUT:
+		uadecore_audio_output = 1;
+		break;
+
+	case AMIGAMSG_RESERVED_0:
+		/* TODO: Remove if not necessary in the future */
+		uadecore_send_debug("Test message %d", amigamsg);
+		break;
+
+	default:
+		fprintf(stderr,"uadecore: Unknown message from score (%d)\n",
+			amigamsg);
+		break;
+	}
 }
 
 

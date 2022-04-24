@@ -21,23 +21,24 @@
 	include	devices/timer.i
 
 
-UADE_SETSUBSONG	equ	1
-UADE_SONG_END	equ	2
-UADE_PLAYERNAME	equ	3
-UADE_MODULENAME	equ	4
-UADE_SUBSINFO	equ	5
-UADE_CHECKERROR	equ	6
-UADE_SCORECRASH	equ	7
-UADE_SCOREDEAD	equ	8
-UADE_GENERALMSG	equ	9
-UADE_NTSC	equ	10
-UADE_FORMATNAME	equ	11
-UADE_LOADFILE	equ	12
-UADE_READ	equ	13
-UADE_FILESIZE	equ	14
-UADE_TIME_CRITICAL	equ	15
-UADE_GET_INFO	equ	16
-UADE_START_OUTPUT	equ	17
+AMIGAMSG_SETSUBSONG	equ	1
+AMIGAMSG_SONG_END	equ	2
+AMIGAMSG_PLAYERNAME	equ	3
+AMIGAMSG_MODULENAME	equ	4
+AMIGAMSG_SUBSINFO	equ	5
+AMIGAMSG_CHECKERROR	equ	6
+AMIGAMSG_SCORECRASH	equ	7
+AMIGAMSG_SCOREDEAD	equ	8
+AMIGAMSG_GENERALMSG	equ	9
+AMIGAMSG_NTSC	equ	10
+AMIGAMSG_FORMATNAME	equ	11
+AMIGAMSG_LOADFILE	equ	12
+AMIGAMSG_READ	equ	13
+AMIGAMSG_FILESIZE	equ	14
+AMIGAMSG_TIME_CRITICAL	equ	15
+AMIGAMSG_GET_INFO	equ	16
+AMIGAMSG_START_OUTPUT	equ	17
+AMIGAMSG_RESERVED_0	equ	18
 
 EXECBASE	equ	$0D00
 EXECENTRIES	equ	210
@@ -303,7 +304,7 @@ excep	movem.l	d0-d7/a0-a7,$100
 	move	#$7fff,dmacon+custom
 	lea	$100.w,a7
 	bsr	set_message_traps
-	moveq	#UADE_SCORECRASH,d0
+	moveq	#AMIGAMSG_SCORECRASH,d0
 	bsr	put_message_by_value
 	movem.l	$100,d0-d7/a0-a7
 
@@ -328,7 +329,7 @@ contplayer	* initialize messaging trap *
 	beq.b	reloc_success
 	lea	reloc_error_msg(pc),a0
 	bsr	put_string
-	moveq	#UADE_SCOREDEAD,d0
+	moveq	#AMIGAMSG_SCOREDEAD,d0
 	bsr	put_message_by_value
 reloc_wait_forever	bra	reloc_wait_forever
 
@@ -490,8 +491,12 @@ novolfunc
 	* call initsound
 	bsr	call_init_sound
 
+	* TODO: Remove this in the future. An example for Wothke.
+	* moveq	#AMIGAMSG_RESERVED_0,d0
+	* bsr	put_message_by_value
+
 	* tell the simulator that audio output should start now
-	move.l	#UADE_START_OUTPUT,d0
+	moveq	#AMIGAMSG_START_OUTPUT,d0
 	bsr	put_message_by_value
 
 	* CIA/VBI is initialized here, or start_int is called, if
@@ -610,7 +615,7 @@ dontplay	* report that score is dead
 	bsr	set_message_traps
 	move	songendbit(pc),d0
 	bne.b	noscoredeadmsg
-	moveq	#UADE_SCOREDEAD,d0
+	moveq	#AMIGAMSG_SCOREDEAD,d0
 	bsr	put_message_by_value
 noscoredeadmsg
 	* check if this is delimon
@@ -677,7 +682,7 @@ endbindumploop	clr.b	(a1)+
 	bsr	put_message
 	pull	all
 	rte
-binmsg	dc.l	UADE_GENERALMSG
+binmsg	dc.l	AMIGAMSG_GENERALMSG
 	dc.b	'MEM '
 binaddr	dcb.b	8,0
 	dc.b	': '
@@ -839,7 +844,7 @@ messagetrap	rte
 inputmessagehandler
 	push	all
 	lea	$300.w,a0
-	cmp.l	#UADE_SETSUBSONG,(a0)
+	cmp.l	#AMIGAMSG_SETSUBSONG,(a0)
 	bne.b	nnsubs
 	move.l	$120.w,d0
 	* call SetSubSong if nextsubsong func is not used
@@ -866,7 +871,7 @@ dontcallsetss	pull	all
 	st	(a0)
 	bra	inputmessagehandled
 nnsubs
-	cmp.l	#UADE_NTSC,(A0)
+	cmp.l	#AMIGAMSG_NTSC,(A0)
 	bne.b	no_ntsc_pal
 	move.l	$124.w,d0
 	andi.l	#1,d0
@@ -917,7 +922,7 @@ put_string	push	all
 	bsr	strlen
 	addq.l	#1,d0
 	move.l	msgptr(pc),a1
-	move.l	#UADE_GENERALMSG,(a1)+
+	move.l	#AMIGAMSG_GENERALMSG,(a1)+
 stringmsgloop	tst.l	d0
 	beq.b	endstringmsgloop
 	move.b	(a0)+,(a1)+
@@ -1069,7 +1074,7 @@ infoloop	move.l	(a0),d0
 	move.l	#250,d0
 	bsr	strlcpy
 	lea	modulename(pc),a0
-	move.l	#UADE_MODULENAME,(a0)
+	move.l	#AMIGAMSG_MODULENAME,(a0)
 	move.l	#256,d0
 	bsr	put_message
 	pull	all
@@ -1082,7 +1087,7 @@ nodtpmodulename	cmpi.l	#DTP_PlayerName,d0
 	move.l	#25,d0
 	bsr	strlcpy
 	lea	playername(pc),a0
-	move.l	#UADE_PLAYERNAME,(a0)
+	move.l	#AMIGAMSG_PLAYERNAME,(a0)
 	move.l	#32,d0
 	bsr	put_message
 	pull	all
@@ -1098,7 +1103,7 @@ nodtpplayername	cmpi.l	#DTP_FormatName,d0
 	move.l	#250,d0
 	bsr	strlcpy
 	lea	formatname(pc),a0
-	move.l	#UADE_FORMATNAME,(a0)
+	move.l	#AMIGAMSG_FORMATNAME,(a0)
 	move.l	#256,d0
 	bsr	put_message
 	pull	all
@@ -1539,7 +1544,7 @@ do_ep_check	move.l	d0,a0
 	beq.b	song_ok
 	tst.l	$118.w
 	bne.b	song_ok
-	moveq	#UADE_CHECKERROR,d0
+	moveq	#AMIGAMSG_CHECKERROR,d0
 	bsr	put_message_by_value
 .loopforever
 	bra	.loopforever
@@ -1570,7 +1575,7 @@ extloaderrmsg	dc.b	'ExtLoad failed',0
 	even
 noextloadfunc	rts
 
-report_song_end	moveq	#UADE_SONG_END,d0
+report_song_end	moveq	#AMIGAMSG_SONG_END,d0
 	bsr	put_message_by_value
 	rts
 
@@ -1607,7 +1612,7 @@ ReportSubSongs	move	minsubsong(pc),d0
 	moveq	#16,d0
 	bsr	put_message
 	rts
-subsonginfo	dc.l	UADE_SUBSINFO
+subsonginfo	dc.l	AMIGAMSG_SUBSINFO
 	dc.l	0,0,0
 
 
@@ -1851,7 +1856,7 @@ loadiconerror
 	tst.l	d0
 	rts
 
-loadfilemsg	dc.l	UADE_LOADFILE
+loadfilemsg	dc.l	AMIGAMSG_LOADFILE
 	dc.l	0,0,0,0	* name ptr, dest ptr, size in msgptr(pc)+12
 loadfilemsge
 load_file_overflow_msg	dc.b	'load file list overflow!',0
@@ -2083,7 +2088,7 @@ fileopenerror	lea	tablefullmsg(pc),a0
 	rts
 tablefullmsg	dc.b	'error: file table full',0
 	even
-dosopenmsg	dc.l	UADE_FILESIZE
+dosopenmsg	dc.l	AMIGAMSG_FILESIZE
 	dc.l	0	* file name ptr
 	dc.l	0	* file length
 	dc.l	0	* file exists (uae returns, see msgptr+12)
@@ -2131,7 +2136,7 @@ seek_done	pull	d1-d7/a0-a6
 	rts
 
 
-dosreadmsg	dc.l	UADE_READ
+dosreadmsg	dc.l	AMIGAMSG_READ
 	* name ptr, dest, offset, length, r. length
 	dc.l	0,0,0,0,0
 dosreadmsge
@@ -2621,7 +2626,7 @@ uade_time_critical
 	pull	all
 	rts
 
-uade_tc_msg	dc.l	UADE_TIME_CRITICAL,0
+uade_tc_msg	dc.l	AMIGAMSG_TIME_CRITICAL,0
 
 uade_get_info
 	push	d1-d7/a0-a6
@@ -2755,7 +2760,7 @@ invalid_ep_opt
 	bsr	put_string
 	bra	end_get_ep_info_loop2
 
-uade_gi_msg	dc.l	UADE_GET_INFO,0,0,0
+uade_gi_msg	dc.l	AMIGAMSG_GET_INFO,0,0,0
 ep_opt_request	dc.b	'eagleoptions',0
 invalid_ep_opt_msg	dc.b	'invalid ep option received',0
 
