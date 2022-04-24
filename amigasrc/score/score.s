@@ -48,6 +48,18 @@ TRAP_VECTOR_4	equ	$90	* play loop uses this for vbi sync
 TRAP_VECTOR_5	equ	$94	* output message trap
 TRAP_VECTOR_6	equ	$98	* bin trap
 
+* Base address of the message in memory that is sent to uade.c
+* uadecore_get_amiga_message(). A message to emulator is sent with:
+*
+*     moveq #msgtype,d0
+*     bsr put_message_by_value
+*
+* To add a new trap on the emulator side, add a new enum to
+* src/include/amigamsg.h. Then use that enum in
+* uade.c:uadecore_get_amiga_message() switch case. The function gets the
+* newly defined message type from the base address defined here.
+SCORE_INPUT_MSG	equ	$200
+
 * uade.library interface
 UadeTimeCritical	equ	-6
 UadePutString		equ	-12
@@ -3562,7 +3574,7 @@ load_file_list	dcb.l	64*3,-1
 load_file_list_end
 	dc.l	-1
 
-msgptr	dc.l	$200
+msgptr	dc.l	SCORE_INPUT_MSG
 messagebit	dc.l	0
 
 nextsongfunc	dc.l	0
