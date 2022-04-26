@@ -155,7 +155,7 @@ static struct uade_ext_to_format_version etf[] = {
 	{.file_ext = "aps", .format = "AProSys"},
 	{.file_ext = "bds", .format = "Benn Daglish"},
 	{.file_ext = "bsi", .format = "Future Composer (BSI)"},
-	{.file_ext = "bss", .format = "Beathovem Synhtesizer"},
+	{.file_ext = "bss", .format = "Beathoven Synthesizer"},
 	{.file_ext = "core", .format = "Core Design"},
 	{.file_ext = "cust", .format = "Custom"},
 	{.file_ext = "dl", .format = "Dave Lowe"},
