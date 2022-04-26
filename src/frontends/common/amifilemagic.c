@@ -55,8 +55,8 @@ enum {
 #define S31_HEADER_LENGTH 1084
 
 
-static int chk_id_offset(unsigned char *buf, int bufsize,
-			 const char *patterns[], int offset, char *pre);
+static int chk_id_offset(unsigned char *buf, size_t bufsize,
+			 const char *patterns[], size_t offset, char *pre);
 
 
 /* Do not use '\0'. They won't work in patterns */
@@ -114,6 +114,20 @@ static const char *offset_0000_patterns[] = {
   NULL, NULL
 };
 
+struct binary_pattern {
+	size_t off;
+	size_t len;
+	const char *pattern;
+	int not_bad_value;
+	unsigned char bad_value;
+};
+
+static const struct binary_pattern aprosys_pattern[] = {
+	{.off = 0, .len = 11, .pattern = "ADRVPACK\x00\x00\x00"},
+	{.off = 11, .len = 1, .not_bad_value = 1, .bad_value = 0},
+	{.len = 0},
+};
+
 static const char *offset_0024_patterns[] = {
   /* ID: Prefix: Desc: */
   "UNCLEART", "DL",		/* Dave Lowe WT */
@@ -133,11 +147,12 @@ static const char *offset_0024_patterns[] = {
 // TODO: Complete list from amifilemagic.
 //       offset_0000_patterns and offset_0024_patterns have been input.
 static struct uade_ext_to_format_version etf[] = {
-	{.file_ext = "aon4", .format = "Art Of Noise (4 ch)"},
-	{.file_ext = "aon8", .format = "Art Of Noise (8 ch)"},
 	{.file_ext = "abk", .format = "Amos ABK"},
 	{.file_ext = "ahx", .format = "AHX"},
 	{.file_ext = "amc", .format = "A.M.Composer"},
+	{.file_ext = "aon4", .format = "Art Of Noise (4 ch)"},
+	{.file_ext = "aon8", .format = "Art Of Noise (8 ch)"},
+	{.file_ext = "aps", .format = "AProSys"},
 	{.file_ext = "bds", .format = "Benn Daglish"},
 	{.file_ext = "bsi", .format = "Future Composer (BSI)"},
 	{.file_ext = "bss", .format = "Beathovem Synhtesizer"},
@@ -239,13 +254,36 @@ const struct uade_ext_to_format_version *uade_file_ext_to_format_version(
    returns true if pattern is at buf[offset], otherwrise false
  */
 static int patterntest(const unsigned char *buf, const char *pattern,
-		       int offset, int bytes, int maxlen)
+		       size_t offset, size_t bytes, size_t maxlen)
 {
   if ((offset + bytes) <= maxlen)
-    return (memcmp(buf + offset, pattern, bytes) == 0) ? 1 : 0;
+	  return memcmp(buf + offset, pattern, bytes) == 0;
+
   return 0;
 }
 
+static int check_binary_pattern(unsigned char *buf, size_t bufsize,
+				const struct binary_pattern patterns[])
+{
+	size_t i;
+	for (i = 0; patterns[i].len != 0; i++) {
+		if (patterns[i].not_bad_value) {
+			size_t max_off = patterns[i].off + patterns[i].len;
+			size_t j;
+			if (max_off > bufsize)
+				return 0;
+			for (j = patterns[i].off; j < max_off; j++) {
+				if (buf[j] == patterns[i].bad_value)
+					return 0;
+			}
+		} else if (!patterntest(buf, patterns[i].pattern,
+					patterns[i].off, patterns[i].len,
+					bufsize)) {
+			return 0;
+		}
+	}
+	return 1;
+}
 
 static int tronictest(unsigned char *buf, size_t bufsize)
 {
@@ -496,7 +534,8 @@ static int mod32check(unsigned char *buf, size_t bufsize, size_t realfilesize,
     return MOD_NOISETRACKER20;		/* Noisetracker2.x */
 
   for (i = 0; startrekker_patterns[i]; i++) {
-    if (patterntest(buf, startrekker_patterns[i], (S31_HEADER_LENGTH - 4), 4, bufsize)) {
+    if (patterntest(buf, startrekker_patterns[i], (S31_HEADER_LENGTH - 4), 4,
+		    bufsize)) {
       t = 0;
       for (j = 0; j < 30 * 0x1e; j = j + 0x1e) {
 	if (buf[0x2a + j] == 0 && buf[0x2b + j] == 0 && buf[0x2d + j] != 0) {
@@ -1168,7 +1207,10 @@ void uade_filemagic(unsigned char *buf, size_t bufsize, char *pre,
     /* generic ID Check at offset 0x00 */
   } else if (chk_id_offset(buf, bufsize, offset_0000_patterns, 0x00, pre)) {
 
-    /*magic ids of some modpackers */
+  } else if (check_binary_pattern(buf, bufsize, aprosys_pattern)) {
+	  strcpy(pre, "APS");  /* AProSys */
+
+    /* magic ids of some modpackers */
   } else if (buf[0x438] == 'P' && buf[0x439] == 'W' && buf[0x43a] == 'R'
 	     && buf[0x43b] == 0x2e) {
     strcpy(pre, "PPK");		/*Polkapacker */
@@ -1187,7 +1229,7 @@ void uade_filemagic(unsigned char *buf, size_t bufsize, char *pre,
 	     && buf[0x3bb] == 'S') {
     strcpy(pre, "KRIS");	/*Kristracker */
 
-  } else if (buf[0] == 'X' && buf[1] == 'P' && buf[2] == 'K' && buf[3] == 'F'&&
+  } else if (buf[0] == 'X' && buf[1] == 'P' && buf[2] == 'K' && buf[3] == 'F' &&
 	     read_be_u32(&buf[4]) + 8 == realfilesize &&
 	     buf[8] == 'S' && buf[9] == 'Q' && buf[10] == 'S' && buf[11] == 'H') {
     fprintf(stderr, "uade: The file is SQSH packed. Please depack first.\n");
@@ -1204,7 +1246,8 @@ void uade_filemagic(unsigned char *buf, size_t bufsize, char *pre,
     /* Custom file check */
   } else if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x03
 	     && buf[3] == 0xf3) {
-     /*CUSTOM*/ i = (buf[0x0b] * 4) + 0x1c;	/* beginning of first chunk */
+	  /* CUSTOM */
+	  i = (buf[0x0b] * 4) + 0x1c;	/* beginning of first chunk */
 
     if (i < bufsize - 0x42) {
 
@@ -1246,21 +1289,24 @@ void uade_filemagic(unsigned char *buf, size_t bufsize, char *pre,
 }
 
 
-/* We are currently stupid and check only for a few magic IDs at the offsets
+/*
+ * We are currently stupid and check only for a few magic IDs at the offsets
  * chk_id_offset returns 1 on success and sets the right prefix/extension
  * in pre
+ *
  * TODO: more and less easy check for the rest of the 52 trackerclones
  */
-static int chk_id_offset(unsigned char *buf, int bufsize,
-			 const char *patterns[], int offset, char *pre)
+static int chk_id_offset(unsigned char *buf, size_t bufsize,
+			 const char *patterns[], size_t offset, char *pre)
 {
-  int i;
-  for (i = 0; patterns[i]; i = i + 2) {
-    if (patterntest(buf, patterns[i], offset, strlen(patterns[i]), bufsize)) {
-      /* match found */
-      strcpy(pre, patterns[i + 1]);
-      return 1;
-    }
-  }
-  return 0;
+	int i;
+	for (i = 0; patterns[i]; i = i + 2) {
+		if (patterntest(buf, patterns[i], offset, strlen(patterns[i]),
+				bufsize)) {
+			/* match found */
+			strcpy(pre, patterns[i + 1]);
+			return 1;
+		}
+	}
+	return 0;
 }
