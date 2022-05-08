@@ -1,5 +1,3 @@
-שתשת
-
 	incdir	asm:
 	include	custom.i
 	include	rmacros.i
